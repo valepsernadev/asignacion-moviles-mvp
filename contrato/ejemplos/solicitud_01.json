@@ -1,0 +1,12 @@
+{
+  "id_solicitud": "ESC-03-S01",
+  "hora": "2026-03-25T14:00:00",
+  "id_zona": "Z-MED-01-01",
+  "codigo": "01",
+  "escala_manchester": "ROJO",
+  "motivo_consulta": "Dolor torácico",
+  "discriminador": "Shock",
+  "canal": "DESCONOCIDO",
+  "posible_traslado": true,
+  "estado": "PENDIENTE"
+}

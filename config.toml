@@ -1,0 +1,62 @@
+# Configuración del MVP · Asignación inteligente de móviles (reto EMI)
+# No contiene datos del reto: solo parámetros del contrato y de las reglas de negocio.
+# Ver CLAUDE.md para el detalle de cada sección y el registro de decisiones.
+
+[contrato]
+version = "0.1"
+
+# Tiempo objetivo (minutos) por código de clasificación final (documento 03).
+[objetivos_min]
+"01" = 15
+"02" = 20
+"07" = 45
+"03" = 90
+"06" = 180
+
+[umbrales]
+# D03: no dejar una zona de demanda ALTA sin ambulancia a más de este tiempo.
+cobertura_min = 20
+# D02: si dos opciones difieren en menos de este costo, preferir la de menor costo.
+diferencia_costo_min = 3
+# R04: ventaja mínima (min) de una VMD sobre la ambulancia más cercana para ir como
+# primer respondiente y preasignar ambulancia.
+r04_ventaja_vmd_min = 12
+# Desvío extendido (07 -> 01/02, o 02 -> 01): ganancia mínima configurable para
+# que el motor proponga el desvío al despachador.
+desvio_extendido_ganancia_min = 5
+# Fase 2 · limpieza de datos: exceso de viaje_min sobre el teórico (tiempo_valle_min *
+# factor del tipo de día y hora de salida) a partir del cual se descarta el registro
+# como error sintético de llegada tardía.
+limpieza_exceso_viaje_min = 45
+
+# D01-D08: pesos iniciales del puntaje de recomendación. Se calibran en la fase 3;
+# estos valores son de partida (suman 1.0) y no están validados con datos.
+[pesos_puntaje]
+d01_tiempo_llegada = 0.30
+d02_costo = 0.15
+d03_cobertura_zonas_alta = 0.20
+d04_balance_carga = 0.10
+d05_uso_eficiente_tipo_movil = 0.10
+d06_posible_traslado_tab = 0.05
+d07_apoyo_medico_vmd = 0.05
+d08_retencion_camilla = 0.05
+
+[retroalimentacion]
+# Lista cerrada de motivos de cambio que puede elegir el despachador. Sin texto libre.
+motivos_cambio = [
+    "CONOCE_SITUACION",
+    "MOVIL_NO_DISPONIBLE_REAL",
+    "COBERTURA",
+    "COSTO",
+    "OTRO",
+]
+
+# Supuesto del equipo (sección 6 de CLAUDE.md, decisión 6): en solicitudes derivadas
+# de los escenarios del archivo 06, un servicio código 07 se marca posible_traslado=True
+# si (motivo_consulta, discriminador) coincide con uno de estos pares de D06
+# (documento 03, tabla de motivos de consulta por clasificación). No es un dato
+# observado: es una regla declarada para poder construir ejemplos y escenarios.
+casos_posible_traslado_07 = [
+    ["Caídas", "Deformidad o dolor moderado en extremidad"],
+    ["Diarrea y vómitos", "Signos de deshidratación"],
+]

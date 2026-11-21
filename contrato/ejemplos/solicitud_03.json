@@ -1,0 +1,12 @@
+{
+  "id_solicitud": "ESC-01-S01",
+  "hora": "2026-03-17T10:02:00",
+  "id_zona": "Z-MED-11-03",
+  "codigo": "03",
+  "escala_manchester": "VERDE",
+  "motivo_consulta": "Adulto con mal estado general",
+  "discriminador": "Fiebre",
+  "canal": "DESCONOCIDO",
+  "posible_traslado": false,
+  "estado": "PENDIENTE"
+}

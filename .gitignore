@@ -1,3 +1,11 @@
+# Proyecto EMI · datos confidenciales y artefactos generados (CLAUDE.md §4)
+datos/
+modelos/*.joblib
+resultados/*.csv
+.venv/
+.ipynb_checkpoints/
+.env
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

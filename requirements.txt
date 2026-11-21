@@ -1,0 +1,10 @@
+# Librerías permitidas (CLAUDE.md, sección 4). Python 3.11.
+pandas
+numpy
+scikit-learn
+joblib
+openpyxl
+pytest
+streamlit
+folium
+streamlit-folium

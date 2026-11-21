@@ -1,0 +1,39 @@
+{
+  "puesto": 1,
+  "id_movil": "MOV-013",
+  "rol_asignado": "ATENCION_Y_TRASLADO",
+  "llegada": {
+    "minutos": 9.0,
+    "minutos_bajo": 7.0,
+    "minutos_alto": 12.0,
+    "modelo": "formula_readme",
+    "confiabilidad_zona_pct": null
+  },
+  "liberacion": {
+    "minutos": 45.0,
+    "minutos_bajo": 35.0,
+    "minutos_alto": 60.0,
+    "modelo": "formula_readme",
+    "confiabilidad_zona_pct": null
+  },
+  "costo_estimado": 38000,
+  "ahorro_vs_alternativa": 5200,
+  "margen_objetivo_min": 6.0,
+  "cobertura": {
+    "zonas_descubiertas": [],
+    "peor_zona": null,
+    "minutos_peor_zona": null,
+    "plan_b_movil": "MOV-019",
+    "plan_b_minutos": 14.5,
+    "resumen": "No deja zonas de demanda ALTA descubiertas."
+  },
+  "puntaje": 0.82,
+  "reglas_aplicadas": [
+    "R01",
+    "R03"
+  ],
+  "etiqueta": "RECOMENDADA",
+  "explicacion": "EJEMPLO ILUSTRATIVO (no es un resultado real del motor). Llega en 9 min (7-12), cuesta $38 mil y no deja zonas descubiertas.",
+  "ambulancia_preasignada": null,
+  "servicio_interrumpido_id": null
+}
