@@ -26,8 +26,8 @@ Este archivo manda sobre cualquier otra instrucción de construcción. Léelo co
 
 | Fase | Responsable | Estado |
 |---|---|---|
-| 1 · Arranque y contrato | P2 | EN CURSO |
-| 2 · Datos y modelos | P1 | PENDIENTE |
+| 1 · Arranque y contrato | P2 | HECHA |
+| 2 · Datos y modelos | P1 | EN CURSO |
 | 3 · Motor de decisión | P2 | PENDIENTE |
 | 4 · Simulador y validación | P3 | PENDIENTE |
 | 5 · App en Streamlit | P4 | PENDIENTE |
@@ -289,3 +289,7 @@ Si la fase 2 no está lista, usa la fórmula del Readme. En `simulador/escenario
 9. Al leer los Excel se salta siempre la hoja `LEEME`. No se usan `lat_aprox` ni `lon_aprox` del histórico.
 10. Corrección de la sección 5: los costos (`costo_km`, `costo_hora`) son por móvil, no por base; se agrega `00_Readme.docx` a la tabla de datos con la fórmula de referencia `tiempo_valle_min × factor_trafico`.
 11. `solicitud_03.json` es una solicitud 03 real tomada de un escenario distinto a ESC-03 (que solo tiene código 01), porque ESC-03 no sirve como fuente para ese ejemplo.
+12. **Fuga de información encontrada y corregida (revisión del equipo, 2026-11-24):** `rol` (original: `ATENCION`, `ATENCION_Y_TRASLADO`, `TRASLADO`, `PRIMER_RESPONDIENTE_ESTABILIZACION`) separaba al 100 % los TAM/TAB con y sin traslado -- era un proxy exacto de `requirio_traslado`, prohibida. Corrección: `rol_al_asignar` (colapsa `ATENCION_Y_TRASLADO` → `ATENCION`; `TRASLADO` y `PRIMER_RESPONDIENTE_ESTABILIZACION` se mantienen) + `posible_traslado` (derivada con `contrato/reglas.py::derivar_posible_traslado`, función única que también deben usar motor y simulador) + referencia de liberación por (`tipo_movil`, clasificación del triaje). Métricas antes/después en `modelos/VERSION.md`: en viaje casi no cambia (MAE 2.59→2.62, R² 0.920→0.920); en liberación cae fuerte (MAE 8.18→13.36 min, R² 0.78→0.39) porque ahí sí vivía la fuga. La mejora % de liberación frente a la referencia queda en ~0 % tras corregir: el modelo ya no aporta sobre la mediana por tipo+clasificación.
+13. **Calibración conforme de los intervalos [P10,P90]** (CQR hecho a mano con numpy, sin librerías nuevas): se separa el último 20 % del conjunto de entrenamiento como calibración y se ensancha el intervalo con el cuantil de los residuos fuera de rango. Cobertura en prueba: viaje 72.1 %→81.5 %, liberación 68.3 %→78.0 % (cifras reales, dentro del rango 75-85 % sin forzarlas).
+14. `Prediccion.confiabilidad_zona_pct` = cobertura empírica calibrada de [P10,P90] en esa zona (destino), solo si la zona tiene 10 casos de prueba o más; si no, `None`.
+15. `predecir_llegada`/`predecir_liberacion` usan `rol_al_asignar` (no `rol`) como nombre del argumento opcional, y `predecir_llegada` agrega el argumento opcional `posible_traslado: bool = False`. El motor de la fase 3 debe pasar siempre estos argumentos.
