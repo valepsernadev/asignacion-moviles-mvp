@@ -243,11 +243,17 @@ def _predecir_llegada_candidato(
 
 
 def _costo_estimado(movil: Movil, llegada: Prediccion, liberacion: Prediccion, tablas: TablasZonasTrafico, solicitud: Solicitud) -> float:
-    """Costo = distancia teórica * costo_km + tiempo total (llegada +
-    liberación) en horas * costo_hora. No hay una fórmula de costo en los
-    datos del reto; esta es una fórmula declarada del equipo, combinando los
-    costos por km y por hora de 02_moviles_y_bases.json con los tiempos
-    estimados (TODO: confirmar con el equipo si prefieren otra fórmula)."""
+    """Costo = distancia teórica (``05_zonas_y_tiempos.xlsx`` > ``matriz_tiempos``,
+    zona actual de la móvil → zona de la solicitud) × ``costo_km`` + tiempo
+    estimado × ``costo_hora``, con ``costo_km``/``costo_hora`` de
+    ``02_moviles_y_bases.json``. «Tiempo estimado» es la suma de las dos
+    predicciones P50 del modelo: ``llegada.minutos`` (desde la posición
+    actual hasta el paciente) + ``liberacion.minutos`` (desde que llega hasta
+    que la móvil vuelve a estar libre), convertida a horas.
+
+    No hay una fórmula de costo en los datos del reto: es un supuesto del
+    equipo (CLAUDE.md, decisión 18), cerrado en la revisión de la fase 6
+    (2026-11-25) -- se mantiene esta fórmula, sin TODO pendiente."""
     _, distancia_km = tablas.tiempo_valle_y_distancia(movil.id_zona_actual, solicitud.id_zona)
     distancia_km = distancia_km or 0.0
     tiempo_total_horas = (llegada.minutos + liberacion.minutos) / 60.0

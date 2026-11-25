@@ -104,11 +104,11 @@ def cargar_escenario(id_escenario: str, ruta_datos: Path = DATOS, config: Option
         config = _config()
 
     xl = pd.ExcelFile(ruta_datos / "06_escenarios_referencia.xlsx")
-    escenarios_df = xl.parse("escenarios")
-    estado_inicial_df = xl.parse("estado_inicial_moviles")
-    solicitudes_df = xl.parse("solicitudes")
-    eventos_df = xl.parse("eventos")
-    decision_df = xl.parse("decision_despachador")
+    escenarios_df = pd.read_excel(xl, sheet_name="escenarios")
+    estado_inicial_df = pd.read_excel(xl, sheet_name="estado_inicial_moviles")
+    solicitudes_df = pd.read_excel(xl, sheet_name="solicitudes")
+    eventos_df = pd.read_excel(xl, sheet_name="eventos")
+    decision_df = pd.read_excel(xl, sheet_name="decision_despachador")
 
     fila_esc = escenarios_df.loc[escenarios_df.id_escenario == id_escenario].iloc[0]
     fecha_hora_inicio = fila_esc["fecha_hora_inicio"]
@@ -189,8 +189,8 @@ def cargar_escenario(id_escenario: str, ruta_datos: Path = DATOS, config: Option
 
 
 def ids_escenarios(ruta_datos: Path = DATOS) -> list[str]:
-    xl = pd.ExcelFile(ruta_datos / "06_escenarios_referencia.xlsx")
-    return sorted(xl.parse("escenarios")["id_escenario"].tolist())
+    datos = pd.read_excel(ruta_datos / "06_escenarios_referencia.xlsx", sheet_name="escenarios")
+    return sorted(datos["id_escenario"].tolist())
 
 
 # --------------------------------------------------------------------------- #
@@ -791,8 +791,8 @@ def comparar_coordinador(df: pd.DataFrame, ruta_datos: Path = DATOS) -> pd.DataF
     puede mapear a un id sin inventar.
     """
     xl = pd.ExcelFile(ruta_datos / "06_escenarios_referencia.xlsx")
-    decisiones = xl.parse("decision_despachador")
-    estado_inicial = xl.parse("estado_inicial_moviles")
+    decisiones = pd.read_excel(xl, sheet_name="decision_despachador")
+    estado_inicial = pd.read_excel(xl, sheet_name="estado_inicial_moviles")
     # Una móvil en FUERA_SERVICIO no puede ser una alternativa real: los
     # comentarios a veces la nombran justo para descartarla («no había VMD en
     # Itagüí: MOV-024 en mantenimiento»). Se excluye del conjunto de

@@ -187,9 +187,9 @@ class TablasZonasTrafico:
     def cargar(cls, ruta_datos: Path = DATOS) -> "TablasZonasTrafico":
         archivo = ruta_datos / "05_zonas_y_tiempos.xlsx"
         xl = pd.ExcelFile(archivo)
-        zonas = xl.parse("zonas")
-        matriz_tiempos = xl.parse("matriz_tiempos")
-        factor_trafico = xl.parse("factor_trafico")
+        zonas = pd.read_excel(xl, sheet_name="zonas")
+        matriz_tiempos = pd.read_excel(xl, sheet_name="matriz_tiempos")
+        factor_trafico = pd.read_excel(xl, sheet_name="factor_trafico")
         factor_lookup = {
             (fila["tipo_dia"], int(str(fila["hora_inicio"]).split(":")[0])): float(fila["factor"])
             for _, fila in factor_trafico.iterrows()  # 72 filas, una sola vez (no por llamada)

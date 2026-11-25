@@ -1,10 +1,12 @@
 # Librerías permitidas (CLAUDE.md, sección 4). Python 3.11.
-pandas
-numpy
-scikit-learn
-joblib
-openpyxl
-pytest
-streamlit
-folium
-streamlit-folium
+# Versiones exactas: las que instaló `pip install -r requirements.txt` en el
+# .venv limpio de la verificación de la fase 6 (2026-11-25), sin conflictos.
+pandas==3.1.1
+numpy==2.4.6
+scikit-learn==1.9.1
+joblib==1.6.0
+openpyxl==3.1.5
+pytest==9.2.0
+streamlit==1.67.0
+folium==1.0.0
+streamlit-folium==0.28.0

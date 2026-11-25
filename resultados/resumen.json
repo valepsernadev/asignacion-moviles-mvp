@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-25T16:55:37",
+  "generado": "2026-11-25T17:32:44",
   "nota_comparabilidad": "La coincidencia con el despachador solo se mide en estado_real (la flota sigue la realidad). En politica_motor y mas_cercana el estado de la flota diverge de la realidad por las propias decisiones simuladas; su coincidencia NO es comparable y se excluye del resumen principal.",
   "metricas_modelo": {
     "viaje": {
