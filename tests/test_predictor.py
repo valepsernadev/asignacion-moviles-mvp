@@ -29,10 +29,12 @@ def predictor() -> PredictorTiempos:
 def test_predictor_cargado_y_entrenado(predictor):
     assert predictor.entrenado
     assert set(predictor.modelos_viaje) == {0.10, 0.50, 0.90}
+    # modelos_liberacion (gradient boosting) sigue entrenado para el reporte,
+    # aunque predecir_liberacion ya no lo usa (ver VERSION.md).
     assert set(predictor.modelos_liberacion) == {0.10, 0.50, 0.90}
-    # Calibración conforme: el ajuste existe y es un número finito.
+    assert predictor.tabla_liberacion_nivel1 and predictor.tabla_liberacion_nivel2 and predictor.tabla_liberacion_nivel3
+    # Calibración conforme de viaje: el ajuste existe y es un número finito.
     assert predictor.ajuste_calibracion_viaje == predictor.ajuste_calibracion_viaje  # no NaN
-    assert predictor.ajuste_calibracion_liberacion == predictor.ajuste_calibracion_liberacion
 
 
 def test_predecir_llegada_p10_p50_p90_ordenados(predictor):
@@ -84,6 +86,25 @@ def test_predecir_liberacion_con_objetos_del_contrato(predictor):
     )
     pred = predictor.predecir_liberacion(solicitud, movil)
     assert pred.minutos_bajo <= pred.minutos <= pred.minutos_alto
+    assert pred.modelo == "percentiles_historicos"
+
+
+def test_resolver_percentiles_liberacion_respalda_a_grupos_mas_amplios():
+    from modelos.predictor import _resolver_percentiles_liberacion
+
+    nivel1 = {("TAM", "01", True): (5.0, 10.0, 20.0, 3)}  # menos de 20 casos
+    nivel2 = {("TAM", "01"): (6.0, 11.0, 21.0, 25)}  # suficientes casos
+    nivel3 = {("TAM",): (7.0, 12.0, 22.0, 500)}
+
+    # grupo especifico con pocos casos -> respalda a nivel2
+    p10, p50, p90, n, nivel = _resolver_percentiles_liberacion(nivel1, nivel2, nivel3, "TAM", "01", True)
+    assert (p10, p50, p90, n) == (6.0, 11.0, 21.0, 25)
+    assert nivel == "tipo_movil+clasificacion_triaje"
+
+    # combinacion no vista en nivel1 ni nivel2 -> respalda a nivel3
+    p10, p50, p90, n, nivel = _resolver_percentiles_liberacion(nivel1, nivel2, nivel3, "TAM", "07", False)
+    assert (p10, p50, p90, n) == (7.0, 12.0, 22.0, 500)
+    assert nivel == "tipo_movil"
 
 
 def test_formula_readme_coincide_con_tiempo_valle_por_factor(predictor):

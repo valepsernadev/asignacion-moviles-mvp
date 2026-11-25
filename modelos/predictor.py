@@ -4,9 +4,16 @@ Implementa, en este orden:
 1. ``cargar_datos()``: limpia el histórico y construye la tabla de
    participaciones de móvil lista para entrenar (sin fuga de información).
 2. ``PredictorTiempos``: gradient boosting cuantílico (P10/P50/P90) para el
-   tiempo de viaje y el tiempo de liberación, con respaldo en la fórmula de
-   ``datos/00_Readme.docx`` cuando el modelo no se puede usar, y un ajuste de
-   calibración conforme (CQR hecho a mano con numpy, sin librerías nuevas).
+   tiempo de viaje, con respaldo en la fórmula de ``datos/00_Readme.docx``
+   cuando el modelo no se puede usar, y un ajuste de calibración conforme
+   (CQR hecho a mano con numpy, sin librerías nuevas). Para liberación, la
+   predicción de producción son percentiles históricos por grupo (ver más
+   abajo); el gradient boosting de liberación se sigue entrenando y evaluando
+   solo para dejar constancia en ``modelos/VERSION.md`` de que se consideró y
+   se descartó (no mejoraba la referencia una vez corregida la fuga).
+3. ``auditoria_fugas()``: revisión rápida, variable por variable, de si
+   alguna variable permitida predice casi a la perfección una variable
+   prohibida (precisión de un árbol de profundidad 2).
 
 Variables permitidas (sin fuga): ``zona_origen_movil``, ``id_zona`` (destino),
 ``tipo_movil``, ``rol_al_asignar``, ``canal``, la clasificación del triaje
@@ -57,6 +64,7 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.tree import DecisionTreeClassifier
 
 from contrato.objetos import Movil, Prediccion, Solicitud, normalizar_codigo
 from contrato.reglas import derivar_posible_traslado
@@ -159,12 +167,21 @@ def _config() -> dict:
 
 @dataclass
 class TablasZonasTrafico:
-    """Tablas de 05_zonas_y_tiempos.xlsx, ya indexadas para lookup rápido."""
+    """Tablas de 05_zonas_y_tiempos.xlsx, ya indexadas para lookup rápido.
+
+    ``factor_lookup`` precalcula las 72 filas de ``factor_trafico`` como un
+    diccionario ``(tipo_dia, hora) -> factor`` en ``cargar()``, una sola vez:
+    antes, ``factor()`` filtraba el DataFrame y recorría las filas con
+    ``iterrows()`` en **cada llamada**, y era el 81 % del tiempo de una
+    llamada a ``recomendar()`` (perfilado con cProfile el 2026-11-24 contra
+    ESC-03: ver motor/despachador.py y modelos/VERSION.md).
+    """
 
     zonas: pd.DataFrame
     matriz_tiempos: pd.DataFrame
     factor_trafico: pd.DataFrame
     ids_zona: tuple
+    factor_lookup: dict[tuple[str, int], float]
 
     @classmethod
     def cargar(cls, ruta_datos: Path = DATOS) -> "TablasZonasTrafico":
@@ -173,11 +190,16 @@ class TablasZonasTrafico:
         zonas = xl.parse("zonas")
         matriz_tiempos = xl.parse("matriz_tiempos")
         factor_trafico = xl.parse("factor_trafico")
+        factor_lookup = {
+            (fila["tipo_dia"], int(str(fila["hora_inicio"]).split(":")[0])): float(fila["factor"])
+            for _, fila in factor_trafico.iterrows()  # 72 filas, una sola vez (no por llamada)
+        }
         return cls(
             zonas=zonas,
             matriz_tiempos=matriz_tiempos.set_index(["zona_origen", "zona_destino"]),
             factor_trafico=factor_trafico,
             ids_zona=tuple(sorted(zonas["id_zona"])),
+            factor_lookup=factor_lookup,
         )
 
     def tiempo_valle_y_distancia(self, zona_origen: str, zona_destino: str) -> tuple[Optional[float], Optional[float]]:
@@ -189,11 +211,7 @@ class TablasZonasTrafico:
         return float(fila["tiempo_valle_min"]), float(fila["distancia_km"])
 
     def factor(self, tipo_dia: str, hora: int) -> Optional[float]:
-        horas = self.factor_trafico[self.factor_trafico["tipo_dia"] == tipo_dia]
-        for _, fila in horas.iterrows():
-            if int(str(fila["hora_inicio"]).split(":")[0]) == hora:
-                return float(fila["factor"])
-        return None
+        return self.factor_lookup.get((tipo_dia, hora))
 
     def formula_readme(self, zona_origen: str, zona_destino: str, hora_iso: str) -> Optional[float]:
         """tiempo estimado (min) = tiempo_valle_min[origen→destino] × factor_trafico[tipo_dia, hora].
@@ -471,35 +489,173 @@ def _ajuste_conforme(p10_calib: np.ndarray, p90_calib: np.ndarray, y_calib: np.n
 
 
 # --------------------------------------------------------------------------- #
+# Percentiles históricos de liberación (reemplaza al gradient boosting: con
+# la fuga corregida, el gradient boosting de liberación no mejora esta
+# referencia -- ver modelos/VERSION.md, sección "Liberación: elección de la
+# tabla de percentiles").
+# --------------------------------------------------------------------------- #
+
+NIVEL_MINIMO_CASOS = 20
+
+
+def _tabla_percentiles_liberacion(df: pd.DataFrame, columnas_grupo: list[str]) -> dict[tuple, tuple[float, float, float, int]]:
+    """Percentiles empíricos [P10, P50, P90] de ``liberacion_min`` por grupo.
+
+    Devuelve ``{clave_grupo: (p10, p50, p90, n)}``, con ``clave_grupo`` una
+    tupla en el mismo orden que ``columnas_grupo`` (siempre tupla, incluso
+    para un solo grupo, para que el lookup sea uniforme).
+    """
+    agg = df.groupby(columnas_grupo)["liberacion_min"].agg(
+        p10=lambda s: s.quantile(0.10), p50="median", p90=lambda s: s.quantile(0.90), n="count"
+    )
+    tabla = {}
+    for clave, fila in agg.iterrows():
+        clave_tupla = clave if isinstance(clave, tuple) else (clave,)
+        tabla[clave_tupla] = (float(fila["p10"]), float(fila["p50"]), float(fila["p90"]), int(fila["n"]))
+    return tabla
+
+
+def _resolver_percentiles_liberacion(
+    tabla_nivel1: dict, tabla_nivel2: dict, tabla_nivel3: dict,
+    tipo_movil: str, clasificacion_triaje: str, posible_traslado: bool,
+    minimo_n: int = NIVEL_MINIMO_CASOS,
+) -> tuple[float, float, float, int, str]:
+    """Resuelve P10/P50/P90 de liberación con respaldo a un grupo más amplio
+    cuando el grupo específico tiene menos de ``minimo_n`` casos.
+
+    Orden: (tipo_movil, clasificacion_triaje, posible_traslado) ->
+    (tipo_movil, clasificacion_triaje) -> (tipo_movil,).
+    """
+    clave1 = (tipo_movil, clasificacion_triaje, bool(posible_traslado))
+    if clave1 in tabla_nivel1 and tabla_nivel1[clave1][3] >= minimo_n:
+        p10, p50, p90, n = tabla_nivel1[clave1]
+        return p10, p50, p90, n, "tipo_movil+clasificacion_triaje+posible_traslado"
+
+    clave2 = (tipo_movil, clasificacion_triaje)
+    if clave2 in tabla_nivel2 and tabla_nivel2[clave2][3] >= minimo_n:
+        p10, p50, p90, n = tabla_nivel2[clave2]
+        return p10, p50, p90, n, "tipo_movil+clasificacion_triaje"
+
+    clave3 = (tipo_movil,)
+    if clave3 in tabla_nivel3:
+        p10, p50, p90, n = tabla_nivel3[clave3]
+        return p10, p50, p90, n, "tipo_movil"
+
+    raise ValueError(f"Sin tabla de percentiles de liberación para tipo_movil={tipo_movil!r}")
+
+
+# --------------------------------------------------------------------------- #
+# Auditoría rápida de fugas: ¿alguna variable permitida predice casi a la
+# perfección alguna variable prohibida? (revisión del equipo, 2026-11-24)
+# --------------------------------------------------------------------------- #
+
+VARIABLES_PROHIBIDAS_AUDITORIA = ("requirio_traslado", "destino", "clasificacion_final", "estado_cierre")
+UMBRAL_FUGA_AUDITORIA = 0.95
+
+
+def auditoria_fugas(df: pd.DataFrame, ruta_datos: Path = DATOS) -> dict:
+    """Para cada variable permitida (``FEATURES``), mide con un árbol de
+    decisión de profundidad 2 qué tan bien predice cada variable prohibida
+    (``requirio_traslado``, ``destino``, ``clasificacion_final``,
+    ``estado_cierre``). Variables categóricas con muchas categorías (zonas)
+    se codifican con un solo splitter por categoría (``pd.get_dummies``); con
+    profundidad 2 el árbol solo puede explotar una señal realmente fuerte,
+    no memorizar 62 zonas.
+
+    Devuelve ``{"todos": [...], "casos_por_encima_del_umbral": [...]}``;
+    "casos_por_encima_del_umbral" solo trae los que superan
+    ``UMBRAL_FUGA_AUDITORIA`` (0.95).
+    """
+    servicios = _cargar_servicios(ruta_datos)
+    info_servicio = {
+        s["id_servicio"]: {
+            "requirio_traslado": s["requirio_traslado"],
+            "destino": s["destino"] or "SIN_TRASLADO",
+            "clasificacion_final": s["clasificacion_final"],
+            "estado_cierre": s["estado_cierre"],
+        }
+        for s in servicios
+    }
+    aux = df.copy()
+    for campo in VARIABLES_PROHIBIDAS_AUDITORIA:
+        aux[campo] = aux["id_servicio"].map(lambda i: info_servicio[i][campo])
+
+    resultados = []
+    for objetivo in VARIABLES_PROHIBIDAS_AUDITORIA:
+        y = aux[objetivo].astype(str)
+        for variable in CATEGORICAS:
+            X = pd.get_dummies(aux[[variable]].astype(str))
+            arbol = DecisionTreeClassifier(max_depth=2, random_state=0).fit(X, y)
+            resultados.append(
+                {"variable": variable, "objetivo_prohibido": objetivo, "precision_arbol_prof2": round(float(arbol.score(X, y)), 4)}
+            )
+        for variable in NUMERICAS:
+            X = aux[[variable]].astype(float)
+            arbol = DecisionTreeClassifier(max_depth=2, random_state=0).fit(X, y)
+            resultados.append(
+                {"variable": variable, "objetivo_prohibido": objetivo, "precision_arbol_prof2": round(float(arbol.score(X, y)), 4)}
+            )
+
+    baseline_por_objetivo = {
+        objetivo: round(float(aux[objetivo].astype(str).value_counts(normalize=True).max()), 4)
+        for objetivo in VARIABLES_PROHIBIDAS_AUDITORIA
+    }
+    casos_fuga = [r for r in resultados if r["precision_arbol_prof2"] > UMBRAL_FUGA_AUDITORIA]
+    return {
+        "umbral": UMBRAL_FUGA_AUDITORIA,
+        "baseline_clase_mayoritaria_por_objetivo": baseline_por_objetivo,
+        "todos": sorted(resultados, key=lambda r: -r["precision_arbol_prof2"]),
+        "casos_por_encima_del_umbral": casos_fuga,
+    }
+
+
+# --------------------------------------------------------------------------- #
 # Clase principal
 # --------------------------------------------------------------------------- #
 
 
 class PredictorTiempos:
-    """Gradient boosting cuantílico (P10/P50/P90) para viaje y liberación.
+    """Gradient boosting cuantílico (P10/P50/P90) para viaje; percentiles
+    históricos por grupo para liberación.
 
-    Si un modelo no se puede usar (no entrenado, o falla al predecir) o falta
-    el par en la matriz de tiempos, ``predecir_llegada`` cae a la fórmula de
-    ``datos/00_Readme.docx`` con ``modelo="formula_readme"``. La fórmula del
-    Readme solo calcula tiempo de viaje; para ``predecir_liberacion`` el
-    respaldo es la mediana histórica por (tipo_movil, clasificación del
-    triaje), con ``modelo="mediana_historica"`` (el Readme no define una
-    fórmula de liberación -- ver el reporte de la fase 2 para esta
-    diferencia).
+    Si el modelo de viaje no se puede usar (no entrenado, o falla al
+    predecir) o falta el par en la matriz de tiempos, ``predecir_llegada``
+    cae a la fórmula de ``datos/00_Readme.docx`` con
+    ``modelo="formula_readme"``.
 
-    Los intervalos [P10, P90] que devuelven ``predecir_llegada`` y
-    ``predecir_liberacion`` están calibrados (CQR, ver ``_ajuste_conforme``):
-    se ensanchan con el ajuste aprendido en un conjunto de calibración
-    separado del de entrenamiento.
+    Para liberación, ``predecir_liberacion`` usa percentiles históricos
+    [P10, P50, P90] por (tipo_movil, clasificacion_triaje, posible_traslado),
+    con respaldo a (tipo_movil, clasificacion_triaje) y luego a tipo_movil
+    cuando el grupo específico tiene menos de ``NIVEL_MINIMO_CASOS`` (20)
+    casos (``modelo="percentiles_historicos"``). Se eligió esta tabla y no
+    el gradient boosting porque, una vez corregida la fuga de `rol`, el
+    gradient boosting de liberación deja de mejorar la referencia (ver
+    ``modelos/VERSION.md``, sección "Liberación: elección de la tabla de
+    percentiles"); el gradient boosting de liberación (``self.modelos_liberacion``)
+    se sigue entrenando y evaluando solo para dejar esa comparación
+    documentada -- no se usa en ``predecir_liberacion``.
+
+    El intervalo [P10, P90] de **viaje** que devuelve ``predecir_llegada``
+    está calibrado (CQR, ver ``_ajuste_conforme``): se ensancha con el
+    ajuste aprendido en un conjunto de calibración separado del de
+    entrenamiento. Los percentiles de liberación ya son cuantiles empíricos
+    directos y no se recalibran.
     """
 
     def __init__(self) -> None:
         self.tablas: Optional[TablasZonasTrafico] = None
         self.ids_zona: tuple = ()
         self.modelos_viaje: dict[float, HistGradientBoostingRegressor] = {}
+        # Gradient boosting de liberación: alternativa evaluada y descartada,
+        # solo para reporte (ver docstring de la clase). No se usa en
+        # predecir_liberacion.
         self.modelos_liberacion: dict[float, HistGradientBoostingRegressor] = {}
         self.alistamiento_mediana_por_tipo: dict[str, float] = {}
         self.liberacion_mediana_por_tipo_y_clasificacion: dict[tuple[str, str], float] = {}
+        # Tabla de percentiles de liberación (producción), tres niveles de respaldo.
+        self.tabla_liberacion_nivel1: dict[tuple, tuple[float, float, float, int]] = {}
+        self.tabla_liberacion_nivel2: dict[tuple, tuple[float, float, float, int]] = {}
+        self.tabla_liberacion_nivel3: dict[tuple, tuple[float, float, float, int]] = {}
         self.ajuste_calibracion_viaje: float = 0.0
         self.ajuste_calibracion_liberacion: float = 0.0
         self.cobertura_por_zona_viaje: dict[str, float] = {}
@@ -562,100 +718,135 @@ class PredictorTiempos:
             .median()
             .items()
         }
+
+        # Tabla de percentiles de liberación (producción), sobre TODO
+        # df_train (fit+calib) -- es una tabla de consulta, no un modelo
+        # ajustado, así que no necesita un conjunto de calibración aparte.
+        self.tabla_liberacion_nivel1 = _tabla_percentiles_liberacion(
+            df_train, ["tipo_movil", "clasificacion_triaje", "posible_traslado"]
+        )
+        self.tabla_liberacion_nivel2 = _tabla_percentiles_liberacion(df_train, ["tipo_movil", "clasificacion_triaje"])
+        self.tabla_liberacion_nivel3 = _tabla_percentiles_liberacion(df_train, ["tipo_movil"])
+
         self.entrenado = True
 
     # -- evaluación ------------------------------------------------------ #
 
     def evaluar(self, df_test: pd.DataFrame) -> dict:
-        """Métricas en el conjunto de prueba (fase 2, punto 5), con cobertura
-        reportada antes y después de calibrar (sin ajustar el número)."""
+        """Métricas en el conjunto de prueba (fase 2, punto 5): viaje con
+        gradient boosting calibrado; liberación con la tabla de percentiles
+        de producción, más el gradient boosting de liberación como
+        alternativa evaluada y descartada (misma df_test, para comparar)."""
         X_test = _construir_X(df_test, self.ids_zona)
 
-        metricas: dict = {"viaje": {}, "liberacion": {}}
-        for nombre, modelos, y_true_serie, ajuste in (
-            ("viaje", self.modelos_viaje, df_test["viaje_min"], self.ajuste_calibracion_viaje),
-            ("liberacion", self.modelos_liberacion, df_test["liberacion_min"], self.ajuste_calibracion_liberacion),
-        ):
-            y_true = y_true_serie.values
-            pred_p50 = modelos[0.50].predict(X_test)
-            pred_p10 = modelos[0.10].predict(X_test)
-            pred_p90 = modelos[0.90].predict(X_test)
+        metricas: dict = {"viaje": {}, "liberacion": {}, "liberacion_alternativa_gb_descartada": {}}
 
-            mae_modelo = mean_absolute_error(y_true, pred_p50)
-            rmse_modelo = mean_squared_error(y_true, pred_p50) ** 0.5
-            r2_modelo = r2_score(y_true, pred_p50)
-            cobertura_sin_calibrar = float(np.mean((y_true >= pred_p10) & (y_true <= pred_p90)))
-            pred_p10_cal = pred_p10 - ajuste
-            pred_p90_cal = pred_p90 + ajuste
-            cobertura_calibrada = float(np.mean((y_true >= pred_p10_cal) & (y_true <= pred_p90_cal)))
-
-            if nombre == "viaje":
-                # Fórmula del Readme: tiempo_valle_min * factor_trafico (en
-                # la asignación, misma frontera temporal que las features).
-                pred_formula = df_test["tiempo_valle_min"] * df_test["factor_trafico"]
-            else:
-                # El Readme no define una fórmula de liberación; se compara
-                # contra la mediana histórica por (tipo_movil, clasificación)
-                # como referencia (ver docstring de la clase).
-                pred_formula = pd.Series(
-                    [
-                        self.liberacion_mediana_por_tipo_y_clasificacion.get((t, c), np.nan)
-                        for t, c in zip(df_test["tipo_movil"], df_test["clasificacion_triaje"])
-                    ],
-                    index=df_test.index,
-                )
-            mae_formula = mean_absolute_error(y_true, pred_formula)
-            rmse_formula = mean_squared_error(y_true, pred_formula) ** 0.5
-            r2_formula = r2_score(y_true, pred_formula)
-            mejora_pct = 100 * (mae_formula - mae_modelo) / mae_formula if mae_formula else None
-
-            metricas[nombre] = {
-                "mae_modelo": round(float(mae_modelo), 3),
-                "rmse_modelo": round(float(rmse_modelo), 3),
-                "r2_modelo": round(float(r2_modelo), 4),
-                "mae_formula": round(float(mae_formula), 3),
-                "rmse_formula": round(float(rmse_formula), 3),
-                "r2_formula": round(float(r2_formula), 4),
-                "mejora_pct_mae_vs_formula": round(float(mejora_pct), 2) if mejora_pct is not None else None,
-                "cobertura_empirica_p10_p90_sin_calibrar": round(cobertura_sin_calibrar, 4),
-                "ajuste_calibracion_min": round(float(ajuste), 3),
-                "cobertura_empirica_p10_p90_calibrada": round(cobertura_calibrada, 4),
-                "n_test": int(len(df_test)),
-            }
-
-        # Error por zona (destino) y cobertura calibrada por zona, solo con
-        # 10 casos de prueba o más (confiabilidad_zona_pct).
-        X_test_v = X_test
-        pred_p50_viaje = self.modelos_viaje[0.50].predict(X_test_v)
-        pred_p10_viaje_cal = self.modelos_viaje[0.10].predict(X_test_v) - self.ajuste_calibracion_viaje
-        pred_p90_viaje_cal = self.modelos_viaje[0.90].predict(X_test_v) + self.ajuste_calibracion_viaje
-        dentro_viaje = (df_test["viaje_min"].values >= pred_p10_viaje_cal) & (
-            df_test["viaje_min"].values <= pred_p90_viaje_cal
-        )
-        errores_abs = np.abs(df_test["viaje_min"].values - pred_p50_viaje)
-        df_err = pd.DataFrame(
-            {"id_zona": df_test["id_zona"].values, "error_abs": errores_abs, "dentro_intervalo": dentro_viaje}
-        )
-        error_por_zona = {}
-        self.cobertura_por_zona_viaje = {}
-        for zona, grupo in df_err.groupby("id_zona"):
+        # -- Viaje: gradient boosting + calibración conforme ---------------- #
+        y_true_viaje = df_test["viaje_min"].values
+        pred_p50_v = self.modelos_viaje[0.50].predict(X_test)
+        pred_p10_v = self.modelos_viaje[0.10].predict(X_test)
+        pred_p90_v = self.modelos_viaje[0.90].predict(X_test)
+        cobertura_v_sin_cal = float(np.mean((y_true_viaje >= pred_p10_v) & (y_true_viaje <= pred_p90_v)))
+        pred_p10_v_cal = pred_p10_v - self.ajuste_calibracion_viaje
+        pred_p90_v_cal = pred_p90_v + self.ajuste_calibracion_viaje
+        cobertura_v_cal = float(np.mean((y_true_viaje >= pred_p10_v_cal) & (y_true_viaje <= pred_p90_v_cal)))
+        # Fórmula del Readme: tiempo_valle_min * factor_trafico (en la
+        # asignación, misma frontera temporal que las features).
+        pred_formula_v = df_test["tiempo_valle_min"] * df_test["factor_trafico"]
+        mae_modelo_v = mean_absolute_error(y_true_viaje, pred_p50_v)
+        mae_formula_v = mean_absolute_error(y_true_viaje, pred_formula_v)
+        metricas["viaje"] = {
+            "mae_modelo": round(float(mae_modelo_v), 3),
+            "rmse_modelo": round(float(mean_squared_error(y_true_viaje, pred_p50_v) ** 0.5), 3),
+            "r2_modelo": round(float(r2_score(y_true_viaje, pred_p50_v)), 4),
+            "mae_formula": round(float(mae_formula_v), 3),
+            "rmse_formula": round(float(mean_squared_error(y_true_viaje, pred_formula_v) ** 0.5), 3),
+            "r2_formula": round(float(r2_score(y_true_viaje, pred_formula_v)), 4),
+            "mejora_pct_mae_vs_formula": round(100 * (mae_formula_v - mae_modelo_v) / mae_formula_v, 2) if mae_formula_v else None,
+            "cobertura_empirica_p10_p90_sin_calibrar": round(cobertura_v_sin_cal, 4),
+            "ajuste_calibracion_min": round(float(self.ajuste_calibracion_viaje), 3),
+            "cobertura_empirica_p10_p90_calibrada": round(cobertura_v_cal, 4),
+            "n_test": int(len(df_test)),
+        }
+        errores_abs_v = np.abs(y_true_viaje - pred_p50_v)
+        dentro_v = (y_true_viaje >= pred_p10_v_cal) & (y_true_viaje <= pred_p90_v_cal)
+        df_err_v = pd.DataFrame({"id_zona": df_test["id_zona"].values, "error_abs": errores_abs_v, "dentro": dentro_v})
+        error_por_zona, self.cobertura_por_zona_viaje = {}, {}
+        for zona, grupo in df_err_v.groupby("id_zona"):
             if len(grupo) >= 10:
                 error_por_zona[zona] = {"n": int(len(grupo)), "mae": round(float(grupo["error_abs"].mean()), 3)}
-                self.cobertura_por_zona_viaje[zona] = round(100 * float(grupo["dentro_intervalo"].mean()), 1)
+                self.cobertura_por_zona_viaje[zona] = round(100 * float(grupo["dentro"].mean()), 1)
         metricas["viaje"]["error_por_zona_min_10_casos"] = error_por_zona
         metricas["viaje"]["cobertura_por_zona_min_10_casos_pct"] = dict(self.cobertura_por_zona_viaje)
 
-        pred_p10_lib_cal = self.modelos_liberacion[0.10].predict(X_test) - self.ajuste_calibracion_liberacion
-        pred_p90_lib_cal = self.modelos_liberacion[0.90].predict(X_test) + self.ajuste_calibracion_liberacion
-        dentro_lib = (df_test["liberacion_min"].values >= pred_p10_lib_cal) & (
-            df_test["liberacion_min"].values <= pred_p90_lib_cal
+        # -- Liberación (producción): percentiles históricos por grupo ------ #
+        y_true_lib = df_test["liberacion_min"].values
+        p10_lib, p50_lib, p90_lib, n_usado, nivel_usado = [], [], [], [], []
+        for tipo, clasif, posible in zip(df_test["tipo_movil"], df_test["clasificacion_triaje"], df_test["posible_traslado"]):
+            p10, p50, p90, n, nivel = _resolver_percentiles_liberacion(
+                self.tabla_liberacion_nivel1, self.tabla_liberacion_nivel2, self.tabla_liberacion_nivel3,
+                tipo, clasif, posible,
+            )
+            p10_lib.append(p10)
+            p50_lib.append(p50)
+            p90_lib.append(p90)
+            n_usado.append(n)
+            nivel_usado.append(nivel)
+        p10_lib, p50_lib, p90_lib = np.array(p10_lib), np.array(p50_lib), np.array(p90_lib)
+        cobertura_lib = float(np.mean((y_true_lib >= p10_lib) & (y_true_lib <= p90_lib)))
+        pred_formula_lib = pd.Series(
+            [
+                self.liberacion_mediana_por_tipo_y_clasificacion.get((t, c), np.nan)
+                for t, c in zip(df_test["tipo_movil"], df_test["clasificacion_triaje"])
+            ],
+            index=df_test.index,
         )
-        df_err_lib = pd.DataFrame({"id_zona": df_test["id_zona"].values, "dentro_intervalo": dentro_lib})
+        mae_modelo_lib = mean_absolute_error(y_true_lib, p50_lib)
+        mae_formula_lib = mean_absolute_error(y_true_lib, pred_formula_lib)
+        metricas["liberacion"] = {
+            "modelo": "percentiles_historicos",
+            "mae_modelo": round(float(mae_modelo_lib), 3),
+            "rmse_modelo": round(float(mean_squared_error(y_true_lib, p50_lib) ** 0.5), 3),
+            "r2_modelo": round(float(r2_score(y_true_lib, p50_lib)), 4),
+            "mae_formula": round(float(mae_formula_lib), 3),
+            "rmse_formula": round(float(mean_squared_error(y_true_lib, pred_formula_lib) ** 0.5), 3),
+            "r2_formula": round(float(r2_score(y_true_lib, pred_formula_lib)), 4),
+            "mejora_pct_mae_vs_formula": round(100 * (mae_formula_lib - mae_modelo_lib) / mae_formula_lib, 2) if mae_formula_lib else None,
+            "cobertura_empirica_p10_p90": round(cobertura_lib, 4),
+            "n_test": int(len(df_test)),
+            "distribucion_nivel_de_respaldo_usado": {
+                k: int(v) for k, v in pd.Series(nivel_usado).value_counts().items()
+            },
+        }
+        dentro_lib = (y_true_lib >= p10_lib) & (y_true_lib <= p90_lib)
+        df_err_lib = pd.DataFrame({"id_zona": df_test["id_zona"].values, "dentro": dentro_lib})
         self.cobertura_por_zona_liberacion = {}
         for zona, grupo in df_err_lib.groupby("id_zona"):
             if len(grupo) >= 10:
-                self.cobertura_por_zona_liberacion[zona] = round(100 * float(grupo["dentro_intervalo"].mean()), 1)
+                self.cobertura_por_zona_liberacion[zona] = round(100 * float(grupo["dentro"].mean()), 1)
         metricas["liberacion"]["cobertura_por_zona_min_10_casos_pct"] = dict(self.cobertura_por_zona_liberacion)
+
+        # -- Liberación: gradient boosting, alternativa evaluada y descartada #
+        pred_p50_l_gb = self.modelos_liberacion[0.50].predict(X_test)
+        pred_p10_l_gb = self.modelos_liberacion[0.10].predict(X_test)
+        pred_p90_l_gb = self.modelos_liberacion[0.90].predict(X_test)
+        cobertura_l_gb_sin_cal = float(np.mean((y_true_lib >= pred_p10_l_gb) & (y_true_lib <= pred_p90_l_gb)))
+        pred_p10_l_gb_cal = pred_p10_l_gb - self.ajuste_calibracion_liberacion
+        pred_p90_l_gb_cal = pred_p90_l_gb + self.ajuste_calibracion_liberacion
+        cobertura_l_gb_cal = float(np.mean((y_true_lib >= pred_p10_l_gb_cal) & (y_true_lib <= pred_p90_l_gb_cal)))
+        mae_modelo_l_gb = mean_absolute_error(y_true_lib, pred_p50_l_gb)
+        metricas["liberacion_alternativa_gb_descartada"] = {
+            "motivo_descarte": "No mejora la referencia (mediana por tipo_movil+clasificacion) una vez corregida la fuga de 'rol'.",
+            "mae_modelo": round(float(mae_modelo_l_gb), 3),
+            "rmse_modelo": round(float(mean_squared_error(y_true_lib, pred_p50_l_gb) ** 0.5), 3),
+            "r2_modelo": round(float(r2_score(y_true_lib, pred_p50_l_gb)), 4),
+            "mae_formula_referencia": round(float(mae_formula_lib), 3),
+            "mejora_pct_mae_vs_formula": round(100 * (mae_formula_lib - mae_modelo_l_gb) / mae_formula_lib, 2) if mae_formula_lib else None,
+            "cobertura_empirica_p10_p90_sin_calibrar": round(cobertura_l_gb_sin_cal, 4),
+            "ajuste_calibracion_min": round(float(self.ajuste_calibracion_liberacion), 3),
+            "cobertura_empirica_p10_p90_calibrada": round(cobertura_l_gb_cal, 4),
+            "n_test": int(len(df_test)),
+        }
 
         self.metricas = metricas
         return metricas
@@ -731,43 +922,119 @@ class PredictorTiempos:
             "ni el modelo ni la fórmula del Readme tienen datos para ese par de zonas."
         )
 
-    def predecir_liberacion(
-        self, solicitud: Solicitud, movil: Movil, *, rol_al_asignar: str = "ATENCION"
-    ) -> Prediccion:
-        """Minutos hasta la liberación de ``movil`` tras atender ``solicitud``.
+    def predecir_llegada_lote(self, candidatos: list[dict]) -> list[Prediccion]:
+        """Como ``predecir_llegada``, pero para varias candidatas a la vez:
+        un solo ``DataFrame`` y **tres** llamadas a ``.predict()`` (una por
+        cuantil) en total, no una llamada completa de ``predecir_llegada``
+        por candidata. ``motor.despachador.recomendar()`` evalúa hasta ~20
+        candidatas por solicitud; perfilado con cProfile el 2026-11-24, era
+        el segundo cuello de botella después de ``TablasZonasTrafico.factor()``
+        (ver esa corrección) -- ver modelos/VERSION.md, revisión de rendimiento.
 
-        ``rol_al_asignar`` es un parámetro opcional (ver ``predecir_llegada``):
-        el rol propuesto todavía no existe como campo de ``Movil`` en el
-        contrato. ``posible_traslado`` se toma directamente de
-        ``solicitud.posible_traslado`` (ya es un campo del contrato).
+        ``candidatos``: lista de dicts con las mismas llaves que los
+        parámetros de ``predecir_llegada`` (``zona_origen``, ``zona_destino``,
+        ``hora``, ``tipo_movil``, ``rol_al_asignar``, ``canal``,
+        ``clasificacion_triaje``, ``posible_traslado``). Devuelve una lista
+        de ``Prediccion`` en el mismo orden.
         """
-        if self.entrenado and self.tablas is not None:
+        if not candidatos:
+            return []
+        if not (self.entrenado and self.tablas is not None):
+            return [
+                self.predecir_llegada(
+                    c["zona_origen"],
+                    c["zona_destino"],
+                    c["hora"],
+                    c["tipo_movil"],
+                    rol_al_asignar=c.get("rol_al_asignar", "ATENCION"),
+                    canal=c.get("canal", "DESCONOCIDO"),
+                    clasificacion_triaje=c.get("clasificacion_triaje"),
+                    posible_traslado=c.get("posible_traslado", False),
+                )
+                for c in candidatos
+            ]
+
+        filas_dict, indices_validos = [], []
+        resultados: list[Optional[Prediccion]] = [None] * len(candidatos)
+        for i, c in enumerate(candidatos):
             try:
                 fila = _fila_inferencia(
                     self.tablas,
-                    movil.id_zona_actual,
-                    solicitud.id_zona,
-                    solicitud.hora,
+                    c["zona_origen"],
+                    c["zona_destino"],
+                    c["hora"],
+                    c["tipo_movil"],
+                    c.get("rol_al_asignar", "ATENCION"),
+                    c.get("canal", "DESCONOCIDO"),
+                    c.get("clasificacion_triaje"),
+                    c.get("posible_traslado", False),
+                )
+                filas_dict.append(fila.iloc[0].to_dict())
+                indices_validos.append(i)
+            except Exception as exc:  # noqa: BLE001 -- respaldo explícito por diseño, por fila
+                warnings.warn(f"predecir_llegada_lote: fila {i} falló ({exc!r}), se usa la fórmula del Readme para esa fila.")
+                valor = self.tablas.formula_readme(c["zona_origen"], c["zona_destino"], c["hora"])
+                if valor is None:
+                    raise ValueError(
+                        f"No se pudo estimar el viaje de {c['zona_origen']} a {c['zona_destino']}: "
+                        "ni el modelo ni la fórmula del Readme tienen datos para ese par de zonas."
+                    )
+                resultados[i] = Prediccion(minutos=valor, minutos_bajo=valor, minutos_alto=valor, modelo="formula_readme")
+
+        if filas_dict:
+            X = _construir_X(pd.DataFrame(filas_dict), self.ids_zona)
+            p10 = self.modelos_viaje[0.10].predict(X) - self.ajuste_calibracion_viaje
+            p50 = self.modelos_viaje[0.50].predict(X)
+            p90 = self.modelos_viaje[0.90].predict(X) + self.ajuste_calibracion_viaje
+            for pos, i in enumerate(indices_validos):
+                tipo_movil = candidatos[i]["tipo_movil"]
+                zona_destino = candidatos[i]["zona_destino"]
+                alistamiento = self.alistamiento_mediana_por_tipo.get(tipo_movil, 0.0)
+                resultados[i] = Prediccion(
+                    minutos=alistamiento + float(p50[pos]),
+                    minutos_bajo=alistamiento + float(p10[pos]),
+                    minutos_alto=alistamiento + float(p90[pos]),
+                    modelo="gradient_boosting_cuantilico",
+                    confiabilidad_zona_pct=self.cobertura_por_zona_viaje.get(zona_destino),
+                )
+        return resultados  # type: ignore[return-value]
+
+    def predecir_liberacion(
+        self, solicitud: Solicitud, movil: Movil, *, rol_al_asignar: str = "ATENCION"
+    ) -> Prediccion:
+        """Minutos hasta la liberación de ``movil`` tras atender ``solicitud``:
+        percentiles históricos [P10,P50,P90] por (tipo_movil,
+        clasificacion_triaje, posible_traslado), con respaldo a grupos más
+        amplios cuando el grupo específico tiene menos de
+        ``NIVEL_MINIMO_CASOS`` casos (ver docstring de la clase).
+
+        ``rol_al_asignar`` se mantiene en la firma por consistencia con
+        ``predecir_llegada`` (el motor de la fase 3 puede pasarlo), pero la
+        tabla de percentiles no lo usa como variable: no aportaba sobre
+        (tipo_movil, clasificacion_triaje, posible_traslado) en las pruebas
+        de la revisión. ``posible_traslado`` se toma directamente de
+        ``solicitud.posible_traslado`` (ya es un campo del contrato).
+        """
+        if self.entrenado:
+            try:
+                p10, p50, p90, n, nivel = _resolver_percentiles_liberacion(
+                    self.tabla_liberacion_nivel1,
+                    self.tabla_liberacion_nivel2,
+                    self.tabla_liberacion_nivel3,
                     movil.tipo_movil,
-                    rol_al_asignar,
-                    solicitud.canal,
                     solicitud.codigo,
                     solicitud.posible_traslado,
                 )
-                X = _construir_X(fila, self.ids_zona)
-                p10 = float(self.modelos_liberacion[0.10].predict(X)[0]) - self.ajuste_calibracion_liberacion
-                p50 = float(self.modelos_liberacion[0.50].predict(X)[0])
-                p90 = float(self.modelos_liberacion[0.90].predict(X)[0]) + self.ajuste_calibracion_liberacion
                 confiabilidad = self.cobertura_por_zona_liberacion.get(solicitud.id_zona)
                 return Prediccion(
                     minutos=p50,
                     minutos_bajo=p10,
                     minutos_alto=p90,
-                    modelo="gradient_boosting_cuantilico",
+                    modelo="percentiles_historicos",
                     confiabilidad_zona_pct=confiabilidad,
                 )
             except Exception as exc:  # noqa: BLE001 -- respaldo explícito por diseño
-                warnings.warn(f"predecir_liberacion: el modelo falló ({exc!r}), se usa la mediana histórica.")
+                warnings.warn(f"predecir_liberacion: la tabla de percentiles falló ({exc!r}), se usa la mediana histórica.")
 
         mediana = self.liberacion_mediana_por_tipo_y_clasificacion.get(
             (movil.tipo_movil, solicitud.codigo), self.alistamiento_mediana_por_tipo.get(movil.tipo_movil, 0.0)
@@ -784,6 +1051,9 @@ class PredictorTiempos:
             "modelos_liberacion": self.modelos_liberacion,
             "alistamiento_mediana_por_tipo": self.alistamiento_mediana_por_tipo,
             "liberacion_mediana_por_tipo_y_clasificacion": self.liberacion_mediana_por_tipo_y_clasificacion,
+            "tabla_liberacion_nivel1": self.tabla_liberacion_nivel1,
+            "tabla_liberacion_nivel2": self.tabla_liberacion_nivel2,
+            "tabla_liberacion_nivel3": self.tabla_liberacion_nivel3,
             "ajuste_calibracion_viaje": self.ajuste_calibracion_viaje,
             "ajuste_calibracion_liberacion": self.ajuste_calibracion_liberacion,
             "cobertura_por_zona_viaje": self.cobertura_por_zona_viaje,
@@ -804,6 +1074,9 @@ class PredictorTiempos:
         predictor.modelos_liberacion = estado["modelos_liberacion"]
         predictor.alistamiento_mediana_por_tipo = estado["alistamiento_mediana_por_tipo"]
         predictor.liberacion_mediana_por_tipo_y_clasificacion = estado["liberacion_mediana_por_tipo_y_clasificacion"]
+        predictor.tabla_liberacion_nivel1 = estado["tabla_liberacion_nivel1"]
+        predictor.tabla_liberacion_nivel2 = estado["tabla_liberacion_nivel2"]
+        predictor.tabla_liberacion_nivel3 = estado["tabla_liberacion_nivel3"]
         predictor.ajuste_calibracion_viaje = estado["ajuste_calibracion_viaje"]
         predictor.ajuste_calibracion_liberacion = estado["ajuste_calibracion_liberacion"]
         predictor.cobertura_por_zona_viaje = estado["cobertura_por_zona_viaje"]

@@ -7,7 +7,24 @@ entrar como variable del modelo, o si cualquier fecha posterior a
 `fecha_hora_asignacion` aparece entre las features.
 """
 
-from modelos.predictor import CATEGORICAS, COLUMNAS_PROHIBIDAS, FEATURES, NUMERICAS, ROLES_AL_ASIGNAR, _construir_X
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+from modelos.predictor import (
+    CATEGORICAS,
+    COLUMNAS_PROHIBIDAS,
+    DATOS,
+    FEATURES,
+    NUMERICAS,
+    ROLES_AL_ASIGNAR,
+    UMBRAL_FUGA_AUDITORIA,
+    _construir_X,
+    auditoria_fugas,
+)
+
+RUTA_HISTORICO_LIMPIO = DATOS / "procesados" / "historico_limpio.csv"
 
 FECHAS_POSTERIORES_A_ASIGNACION = (
     "fecha_hora_salida",
@@ -62,3 +79,18 @@ def test_construir_X_solo_produce_las_columnas_permitidas(tmp_path):
     assert list(X.columns) == list(CATEGORICAS) + list(NUMERICAS)
     for columna in COLUMNAS_PROHIBIDAS:
         assert columna not in X.columns
+
+
+@pytest.mark.skipif(
+    not RUTA_HISTORICO_LIMPIO.exists(), reason="datos/procesados/historico_limpio.csv no existe; correr entrenar.py primero"
+)
+def test_auditoria_fugas_no_encuentra_casos_por_encima_del_umbral():
+    # Regresión: si una variable permitida empieza a predecir casi a la
+    # perfección una prohibida (requirio_traslado, destino,
+    # clasificacion_final, estado_cierre), esta prueba debe fallar.
+    df = pd.read_csv(RUTA_HISTORICO_LIMPIO)
+    resultado = auditoria_fugas(df)
+    assert resultado["umbral"] == UMBRAL_FUGA_AUDITORIA
+    assert resultado["casos_por_encima_del_umbral"] == [], (
+        f"Nueva fuga encontrada: {resultado['casos_por_encima_del_umbral']}"
+    )

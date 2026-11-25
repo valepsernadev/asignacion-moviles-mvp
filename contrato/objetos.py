@@ -167,6 +167,14 @@ class Recomendacion:
     explicacion: str
     ambulancia_preasignada: Optional[str] = None
     servicio_interrumpido_id: Optional[str] = None
+    # D07 (documento 03: «En un 01 atendido por TAB, enviar VMD como apoyo
+    # médico si hay una cercana»): sugerencia secundaria, solo informativa,
+    # que no consume un puesto del top 3 ni cambia el estado de ninguna
+    # móvil. Campo agregado en la revisión del equipo del 2026-11-24;
+    # extensión aditiva y opcional del contrato (ambos quedan en None salvo
+    # que D07 aplique), no requiere subir la versión de config.toml.
+    apoyo_medico_sugerido: Optional[str] = None  # id_movil de la VMD cercana
+    apoyo_medico_llegada: Optional[Prediccion] = None
 
     @classmethod
     def from_dict(cls, datos: dict) -> "Recomendacion":
@@ -174,6 +182,8 @@ class Recomendacion:
         valores["llegada"] = Prediccion.from_dict(valores["llegada"])
         valores["liberacion"] = Prediccion.from_dict(valores["liberacion"])
         valores["cobertura"] = Cobertura.from_dict(valores["cobertura"])
+        if valores.get("apoyo_medico_llegada") is not None:
+            valores["apoyo_medico_llegada"] = Prediccion.from_dict(valores["apoyo_medico_llegada"])
         return cls(**valores)
 
 

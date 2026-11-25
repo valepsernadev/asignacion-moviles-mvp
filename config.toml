@@ -28,6 +28,11 @@ desvio_extendido_ganancia_min = 5
 # factor del tipo de día y hora de salida) a partir del cual se descarta el registro
 # como error sintético de llegada tardía.
 limpieza_exceso_viaje_min = 45
+# Prioridad clínica en 01/02 (revisión del equipo, 2026-11-24): para esos dos
+# códigos, el motor ordena primero por puntaje SIN el componente de costo
+# (llegada, compatibilidad y cobertura); el costo solo desempata entre
+# candidatas cuya diferencia de ese puntaje sea menor a este umbral.
+umbral_desempate_clinico = 0.02
 
 # D01-D08: pesos iniciales del puntaje de recomendación. Se calibran en la fase 3;
 # estos valores son de partida (suman 1.0) y no están validados con datos.
