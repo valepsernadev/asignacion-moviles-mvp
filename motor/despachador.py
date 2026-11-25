@@ -810,6 +810,7 @@ def recomendar(
         # (ver _BONUS_NIVEL_CLINICO); el tiempo objetivo decide el nivel por
         # separado (cumple_objetivo, arriba), no sumándose a este puntaje.
         # Para 03/06/07 no se usa (se deja e["puntaje"] tal cual).
+        e["componentes"] = componentes
         if es_clinico:
             e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], componentes, e["nivel"])
         if e["nivel"] == "NO_RECOMENDADA":
@@ -854,6 +855,7 @@ def recomendar(
             ambulancia_preasignada=e["ambulancia_preasignada"],
             servicio_interrumpido_id=e["servicio_interrumpido_id"],
             cumple_objetivo=e["cumple_objetivo"],
+            detalle_puntaje={k: round(v, 4) for k, v in e["componentes"].items()},
         )
         recomendaciones.append(recomendacion)
 

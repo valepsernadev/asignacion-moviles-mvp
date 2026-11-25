@@ -1,6 +1,6 @@
 # Versión del modelo
 
-Generado por `entrenar.py` el 2026-11-24 21:51 UTC.
+Generado por `entrenar.py` el 2026-11-25 21:51 UTC.
 
 ## Corte entrenamiento/prueba
 

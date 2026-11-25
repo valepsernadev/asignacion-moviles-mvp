@@ -202,6 +202,10 @@ COLUMNAS_METRICAS = [
     "modo",
     "id_solicitud",
     "codigo",
+    # Minuto del escenario en que se decidió (para trazar cadenas de
+    # decisiones entre solicitudes) y reglas aplicadas al puesto 1.
+    "minuto_solicitud",
+    "reglas_puesto1",
     "puesto1_motor",
     "top3_motor",
     "id_movil_real",
@@ -242,6 +246,7 @@ def _fila_metrica(
     objetivo: float,
     nota: str = "",
     espera_real_min: Optional[float] = None,
+    minuto_solicitud: Optional[float] = None,
 ) -> dict:
     """Una fila de métricas. Base de tiempo ÚNICA (revisión del equipo,
     2026-11-24): todos los tiempos de llegada se cuentan **desde la hora de
@@ -294,6 +299,8 @@ def _fila_metrica(
         "modo": modo,
         "id_solicitud": id_solicitud,
         "codigo": codigo,
+        "minuto_solicitud": minuto_solicitud,
+        "reglas_puesto1": ";".join(puesto1.reglas_aplicadas) if puesto1 else None,
         "puesto1_motor": puesto1.id_movil if puesto1 else None,
         "top3_motor": ";".join(ids_top3),
         "id_movil_real": id_movil_real,
@@ -331,6 +338,7 @@ def reproducir(
     predictor: PredictorTiempos,
     tablas: TablasZonasTrafico,
     gestor: Optional[GestorDecisiones] = None,
+    capturar_estados: Optional[list] = None,
 ) -> list[dict]:
     """Recorre las solicitudes y eventos de ``escenario`` en orden de hora
     (CLAUDE.md, fase 4, punto 2 -- sin SimPy) y devuelve una fila de
@@ -492,6 +500,23 @@ def reproducir(
             return
         solicitud = solicitudes_por_id[id_sol]
         hora = solicitud.hora
+        if capturar_estados is not None:
+            # Foto del estado ANTES de decidir, para la app interactiva
+            # (fase 5): así la interfaz puede mostrar el top 3 recalculado
+            # sobre exactamente el estado real de ese momento.
+            capturar_estados.append(
+                {
+                    "tipo": "solicitud",
+                    "id_escenario": escenario.id_escenario,
+                    "id_solicitud": id_sol,
+                    "codigo": solicitud.codigo,
+                    "minuto": float(escenario.minutos_solicitud[id_sol]),
+                    "hora": hora,
+                    "solicitud": copy.deepcopy(solicitud),
+                    "flota": copy.deepcopy(flota),
+                    "nota": "",
+                }
+            )
         if modo == "mas_cercana":
             rec = elegir_mas_cercana(solicitud, flota, hora, config, predictor, tablas)
             top3 = [rec] if rec is not None else []
@@ -514,6 +539,7 @@ def reproducir(
             _fila_metrica(
                 escenario.id_escenario, modo, id_sol, solicitud.codigo, top3, id_movil_real, tiempo_real,
                 prediccion_despachador, objetivo, espera_real_min=espera_real,
+                minuto_solicitud=float(escenario.minutos_solicitud[id_sol]),
             )
         )
 
@@ -586,6 +612,20 @@ def reproducir(
                 solicitud, nuevo_codigo, flota, ev["hora"], config, predictor, tablas
             )
             solicitudes_por_id[id_sol] = reclasificada
+            if capturar_estados is not None:
+                capturar_estados.append(
+                    {
+                        "tipo": "reclasificacion",
+                        "id_escenario": escenario.id_escenario,
+                        "id_solicitud": id_sol,
+                        "codigo": nuevo_codigo,
+                        "minuto": float(ev["minuto"]),
+                        "hora": ev["hora"],
+                        "solicitud": copy.deepcopy(reclasificada),
+                        "flota": copy.deepcopy(flota),
+                        "nota": f"reclasificacion:{tipo}",
+                    }
+                )
             if modo == "mas_cercana":
                 rec_mc = elegir_mas_cercana(reclasificada, flota, ev["hora"], config, predictor, tablas)
                 recs = [rec_mc] if rec_mc is not None else []
@@ -605,6 +645,7 @@ def reproducir(
                     escenario.id_escenario, modo, id_sol, nuevo_codigo, recs, id_movil_real, tiempo_real,
                     _predecir_para_movil(id_movil_real, reclasificada), objetivo,
                     nota=f"reclasificacion:{tipo}", espera_real_min=espera_real,
+                    minuto_solicitud=float(ev["minuto"]),
                 )
             )
             if modo in MODOS_SIMULADOS and recs:

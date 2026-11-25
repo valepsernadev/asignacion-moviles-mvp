@@ -181,6 +181,10 @@ class Recomendacion:
     # se cumple el tiempo vital y cuál es puntaje (en 01/02 el tiempo
     # objetivo decide el orden antes que puntaje -- ver motor/despachador.py).
     cumple_objetivo: bool = False
+    # Contribución ponderada de cada deseable al puntaje (D01-D08), para el
+    # desplegable «detalle» de la app (fase 5). Vacío en las políticas sin
+    # puntaje (mas_cercana) y en las recomendaciones de reclasificación.
+    detalle_puntaje: dict = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, datos: dict) -> "Recomendacion":
