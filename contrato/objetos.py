@@ -175,6 +175,12 @@ class Recomendacion:
     # que D07 aplique), no requiere subir la versión de config.toml.
     apoyo_medico_sugerido: Optional[str] = None  # id_movil de la VMD cercana
     apoyo_medico_llegada: Optional[Prediccion] = None
+    # ¿La llegada (P50) cumple el tiempo objetivo del código (documento 03,
+    # config.toml -> objetivos_min)? Campo agregado en la revisión del
+    # equipo del 2026-11-24 para que la interfaz muestre, por separado, si
+    # se cumple el tiempo vital y cuál es puntaje (en 01/02 el tiempo
+    # objetivo decide el orden antes que puntaje -- ver motor/despachador.py).
+    cumple_objetivo: bool = False
 
     @classmethod
     def from_dict(cls, datos: dict) -> "Recomendacion":

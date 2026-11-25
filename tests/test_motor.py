@@ -493,48 +493,49 @@ def test_candidata_que_cumple_objetivo_gana_a_una_con_mejor_d03_d08_que_no_cumpl
         llegada_min=18.0, costo=250000.0, nivel="PERMITIDA",
         cobertura=Cobertura(zonas_descubiertas=[]),
     )
-    a["puntaje_sin_costo"] = _puntaje_sin_costo(a["puntaje"], a["componentes"], a["nivel"], a["llegada"].minutos, objetivo)
-    b["puntaje_sin_costo"] = _puntaje_sin_costo(b["puntaje"], b["componentes"], b["nivel"], b["llegada"].minutos, objetivo)
+    # cumple_objetivo se calcula explícitamente, como lo hace recomendar(),
+    # con una tupla de orden -- no sumando un número al puntaje.
+    a["cumple_objetivo"] = a["llegada"].minutos <= objetivo
+    b["cumple_objetivo"] = b["llegada"].minutos <= objetivo
+    assert a["cumple_objetivo"] is True and b["cumple_objetivo"] is False
+    a["puntaje_sin_costo"] = _puntaje_sin_costo(a["puntaje"], a["componentes"], a["nivel"])
+    b["puntaje_sin_costo"] = _puntaje_sin_costo(b["puntaje"], b["componentes"], b["nivel"])
 
-    # Sin el bonus de objetivo, B (mejor D03/D08) le ganaría a A en puntaje
-    # "crudo" D01+D03..D08 -- confirmamos que efectivamente B tendría más
-    # puntaje sin el bonus, para que la prueba sea exigente:
-    crudo_a = a["puntaje"] - a["componentes"]["d02_costo"]
-    crudo_b = b["puntaje"] - b["componentes"]["d02_costo"]
-    assert crudo_b > crudo_a, "la prueba necesita que B gane en D01+D03..D08 crudo, para que el caso sea exigente"
+    # B (mejor D03/D08) le ganaría a A en puntaje_sin_costo "crudo" -- la
+    # prueba exige precisamente que, aun así, A quede primero por nivel.
+    assert b["puntaje_sin_costo"] > a["puntaje_sin_costo"], "la prueba necesita que B gane en puntaje_sin_costo crudo"
 
     ordenadas = _ordenar_candidatas([a, b], "01", umbral_desempate_clinico=0.02)
     assert ordenadas[0] is a, "A cumple el objetivo de 15 min; debe quedar primero aunque B tenga mejor D03/D08"
+    # Y el puntaje mostrado sigue en escala 0-1 (no un número inflado).
+    assert 0.0 <= ordenadas[0]["puntaje_mostrado"] <= 1.0
 
 
 def test_si_ninguna_cumple_objetivo_el_orden_es_el_de_siempre():
     from contrato.objetos import Cobertura
+    from motor.despachador import _puntaje_sin_costo
 
     objetivo = 15.0
     a = _evaluada_sintetica(llegada_min=20.0, costo=300000.0, nivel="PREFERIDA", cobertura=Cobertura())
     b = _evaluada_sintetica(llegada_min=22.0, costo=250000.0, nivel="PERMITIDA", cobertura=Cobertura(zonas_descubiertas=["Z1"], peor_zona="Z1", minutos_peor_zona=25.0))
-    from motor.despachador import _puntaje_sin_costo
-
     for e in (a, b):
-        e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], e["componentes"], e["nivel"], e["llegada"].minutos, objetivo)
+        e["cumple_objetivo"] = e["llegada"].minutos <= objetivo
+        e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], e["componentes"], e["nivel"])
+    assert a["cumple_objetivo"] is False and b["cumple_objetivo"] is False
 
     con_objetivo = _ordenar_candidatas([dict(a), dict(b)], "01", umbral_desempate_clinico=0.02)
-    # Sin bonus (ninguna cumple objetivo <= 15), el orden depende solo de
-    # puntaje_sin_costo (ya calculado igual con o sin la lógica de niveles,
-    # porque ninguna recibe el bonus) -- confirmamos que coincide con
-    # ordenar directamente por ese valor, sin ningún tratamiento especial.
+    # Como ninguna cumple el objetivo, las dos caen en el mismo nivel y el
+    # orden depende solo de puntaje_sin_costo -- igual que si no existiera
+    # la lógica de niveles.
     esperado = sorted([a, b], key=lambda e: -e["puntaje_sin_costo"])
-    assert [id(e) for e in con_objetivo] == [id(e) for e in esperado] or (
-        con_objetivo[0]["llegada"].minutos == esperado[0]["llegada"].minutos
-    )
+    assert [e["llegada"].minutos for e in con_objetivo] == [e["llegada"].minutos for e in esperado]
 
 
 def test_puntaje_mostrado_es_monotono_con_el_puesto_incluso_con_desempate_por_costo():
     from contrato.objetos import Cobertura
-
-    objetivo = 15.0
     from motor.despachador import _puntaje_sin_costo
 
+    objetivo = 15.0
     # Tres candidatas en una cadena de empates (cada una a <0.02 de la
     # siguiente) pero con costos que, al reordenar por costo, invertirían
     # el orden crudo si se mostrara el valor individual de cada una.
@@ -544,11 +545,36 @@ def test_puntaje_mostrado_es_monotono_con_el_puesto_incluso_con_desempate_por_co
         _evaluada_sintetica(llegada_min=10.6, costo=300000.0, nivel="PREFERIDA", cobertura=Cobertura()),
     ]
     for e in candidatas:
-        e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], e["componentes"], e["nivel"], e["llegada"].minutos, objetivo)
+        e["cumple_objetivo"] = e["llegada"].minutos <= objetivo
+        e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], e["componentes"], e["nivel"])
 
     ordenadas = _ordenar_candidatas(candidatas, "01", umbral_desempate_clinico=0.02)
     mostrados = [e["puntaje_mostrado"] for e in ordenadas]
     assert mostrados == sorted(mostrados, reverse=True), f"el puntaje mostrado no es monótono: {mostrados}"
+
+
+def test_monotonia_de_cumple_objetivo_y_puntaje_a_traves_del_limite_de_nivel():
+    # La monotonía debe sostenerse por la tupla (cumple_objetivo, puntaje),
+    # no solo dentro de cada nivel: ninguna candidata que no cumple el
+    # objetivo puede mostrar un puntaje mayor que una que sí cumple, ni
+    # aparecer antes en el orden final.
+    from contrato.objetos import Cobertura
+    from motor.despachador import _puntaje_sin_costo
+
+    objetivo = 15.0
+    cumple_bajo = _evaluada_sintetica(llegada_min=14.9, costo=350000.0, nivel="PERMITIDA", cobertura=Cobertura())  # cumple, puntaje crudo bajo
+    no_cumple_alto = _evaluada_sintetica(llegada_min=16.0, costo=100000.0, nivel="PREFERIDA", cobertura=Cobertura())  # no cumple, puntaje crudo alto
+    for e in (cumple_bajo, no_cumple_alto):
+        e["cumple_objetivo"] = e["llegada"].minutos <= objetivo
+        e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], e["componentes"], e["nivel"])
+    assert no_cumple_alto["puntaje_sin_costo"] > cumple_bajo["puntaje_sin_costo"], (
+        "la prueba necesita que la que NO cumple tenga mayor puntaje_sin_costo crudo, para ser exigente"
+    )
+
+    ordenadas = _ordenar_candidatas([cumple_bajo, no_cumple_alto], "01", umbral_desempate_clinico=0.02)
+    tuplas = [(e["cumple_objetivo"], e["puntaje_mostrado"]) for e in ordenadas]
+    assert ordenadas[0] is cumple_bajo
+    assert tuplas == sorted(tuplas, key=lambda t: (-t[0], -t[1])), f"no es monótono por (cumple_objetivo, puntaje): {tuplas}"
 
 
 def test_explicacion_advertencia_con_plan_b():

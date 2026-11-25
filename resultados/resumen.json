@@ -1,0 +1,994 @@
+{
+  "generado": "2026-11-24T20:54:50",
+  "nota_comparabilidad": "La coincidencia con el despachador solo se mide en estado_real (la flota sigue la realidad). En politica_motor y mas_cercana el estado de la flota diverge de la realidad por las propias decisiones simuladas; su coincidencia NO es comparable y se excluye del resumen principal.",
+  "metricas_modelo": {
+    "viaje": {
+      "mae_modelo": 2.641,
+      "rmse_modelo": 4.707,
+      "r2_modelo": 0.9132,
+      "mae_formula": 3.788,
+      "rmse_formula": 6.124,
+      "r2_formula": 0.853,
+      "mejora_pct_mae_vs_formula": 30.29,
+      "cobertura_empirica_p10_p90_sin_calibrar": 0.7211,
+      "ajuste_calibracion_min": 0.625,
+      "cobertura_empirica_p10_p90_calibrada": 0.8153,
+      "n_test": 1965,
+      "error_por_zona_min_10_casos": {
+        "Z-BEL-01": {
+          "n": 61,
+          "mae": 2.702
+        },
+        "Z-BEL-02": {
+          "n": 39,
+          "mae": 4.49
+        },
+        "Z-BEL-03": {
+          "n": 34,
+          "mae": 3.075
+        },
+        "Z-ENV-01": {
+          "n": 47,
+          "mae": 2.041
+        },
+        "Z-ENV-02": {
+          "n": 28,
+          "mae": 1.952
+        },
+        "Z-ENV-03": {
+          "n": 35,
+          "mae": 3.347
+        },
+        "Z-EST-01": {
+          "n": 16,
+          "mae": 4.942
+        },
+        "Z-GIR-01": {
+          "n": 12,
+          "mae": 7.292
+        },
+        "Z-ITA-01": {
+          "n": 29,
+          "mae": 3.437
+        },
+        "Z-ITA-02": {
+          "n": 28,
+          "mae": 4.666
+        },
+        "Z-MED-01-01": {
+          "n": 32,
+          "mae": 3.374
+        },
+        "Z-MED-01-02": {
+          "n": 36,
+          "mae": 3.573
+        },
+        "Z-MED-01-03": {
+          "n": 45,
+          "mae": 2.875
+        },
+        "Z-MED-02-01": {
+          "n": 41,
+          "mae": 2.14
+        },
+        "Z-MED-02-02": {
+          "n": 39,
+          "mae": 3.289
+        },
+        "Z-MED-02-03": {
+          "n": 52,
+          "mae": 2.531
+        },
+        "Z-MED-03-01": {
+          "n": 41,
+          "mae": 2.689
+        },
+        "Z-MED-03-02": {
+          "n": 35,
+          "mae": 1.537
+        },
+        "Z-MED-03-03": {
+          "n": 32,
+          "mae": 2.318
+        },
+        "Z-MED-04-01": {
+          "n": 37,
+          "mae": 2.519
+        },
+        "Z-MED-04-02": {
+          "n": 44,
+          "mae": 2.053
+        },
+        "Z-MED-04-03": {
+          "n": 47,
+          "mae": 1.855
+        },
+        "Z-MED-05-01": {
+          "n": 16,
+          "mae": 2.23
+        },
+        "Z-MED-05-02": {
+          "n": 28,
+          "mae": 2.351
+        },
+        "Z-MED-05-03": {
+          "n": 28,
+          "mae": 2.19
+        },
+        "Z-MED-06-01": {
+          "n": 56,
+          "mae": 1.926
+        },
+        "Z-MED-06-02": {
+          "n": 48,
+          "mae": 2.991
+        },
+        "Z-MED-06-03": {
+          "n": 36,
+          "mae": 1.769
+        },
+        "Z-MED-07-01": {
+          "n": 23,
+          "mae": 2.163
+        },
+        "Z-MED-07-02": {
+          "n": 24,
+          "mae": 2.137
+        },
+        "Z-MED-07-03": {
+          "n": 28,
+          "mae": 2.377
+        },
+        "Z-MED-08-01": {
+          "n": 36,
+          "mae": 1.26
+        },
+        "Z-MED-08-02": {
+          "n": 27,
+          "mae": 2.557
+        },
+        "Z-MED-08-03": {
+          "n": 29,
+          "mae": 3.165
+        },
+        "Z-MED-09-01": {
+          "n": 33,
+          "mae": 3.561
+        },
+        "Z-MED-09-02": {
+          "n": 26,
+          "mae": 2.202
+        },
+        "Z-MED-09-03": {
+          "n": 22,
+          "mae": 2.769
+        },
+        "Z-MED-10-01": {
+          "n": 32,
+          "mae": 2.624
+        },
+        "Z-MED-10-02": {
+          "n": 38,
+          "mae": 1.862
+        },
+        "Z-MED-10-03": {
+          "n": 45,
+          "mae": 1.927
+        },
+        "Z-MED-11-01": {
+          "n": 12,
+          "mae": 2.04
+        },
+        "Z-MED-11-02": {
+          "n": 27,
+          "mae": 2.471
+        },
+        "Z-MED-11-03": {
+          "n": 33,
+          "mae": 1.704
+        },
+        "Z-MED-12-01": {
+          "n": 18,
+          "mae": 1.663
+        },
+        "Z-MED-12-02": {
+          "n": 35,
+          "mae": 1.989
+        },
+        "Z-MED-12-03": {
+          "n": 34,
+          "mae": 2.532
+        },
+        "Z-MED-13-01": {
+          "n": 19,
+          "mae": 4.74
+        },
+        "Z-MED-13-02": {
+          "n": 23,
+          "mae": 1.816
+        },
+        "Z-MED-13-03": {
+          "n": 31,
+          "mae": 2.657
+        },
+        "Z-MED-14-01": {
+          "n": 36,
+          "mae": 1.95
+        },
+        "Z-MED-14-02": {
+          "n": 56,
+          "mae": 2.402
+        },
+        "Z-MED-14-03": {
+          "n": 33,
+          "mae": 1.788
+        },
+        "Z-MED-15-01": {
+          "n": 13,
+          "mae": 1.928
+        },
+        "Z-MED-15-02": {
+          "n": 17,
+          "mae": 2.075
+        },
+        "Z-MED-16-01": {
+          "n": 36,
+          "mae": 2.45
+        },
+        "Z-MED-16-02": {
+          "n": 42,
+          "mae": 2.027
+        },
+        "Z-MED-16-03": {
+          "n": 33,
+          "mae": 2.341
+        },
+        "Z-SAB-01": {
+          "n": 29,
+          "mae": 9.067
+        },
+        "Z-SAB-02": {
+          "n": 28,
+          "mae": 2.598
+        }
+      },
+      "cobertura_por_zona_min_10_casos_pct": {
+        "Z-BEL-01": 80.3,
+        "Z-BEL-02": 71.8,
+        "Z-BEL-03": 64.7,
+        "Z-ENV-01": 87.2,
+        "Z-ENV-02": 89.3,
+        "Z-ENV-03": 82.9,
+        "Z-EST-01": 81.2,
+        "Z-GIR-01": 58.3,
+        "Z-ITA-01": 82.8,
+        "Z-ITA-02": 89.3,
+        "Z-MED-01-01": 87.5,
+        "Z-MED-01-02": 77.8,
+        "Z-MED-01-03": 73.3,
+        "Z-MED-02-01": 82.9,
+        "Z-MED-02-02": 74.4,
+        "Z-MED-02-03": 86.5,
+        "Z-MED-03-01": 73.2,
+        "Z-MED-03-02": 82.9,
+        "Z-MED-03-03": 87.5,
+        "Z-MED-04-01": 86.5,
+        "Z-MED-04-02": 81.8,
+        "Z-MED-04-03": 80.9,
+        "Z-MED-05-01": 56.2,
+        "Z-MED-05-02": 75.0,
+        "Z-MED-05-03": 85.7,
+        "Z-MED-06-01": 87.5,
+        "Z-MED-06-02": 77.1,
+        "Z-MED-06-03": 86.1,
+        "Z-MED-07-01": 78.3,
+        "Z-MED-07-02": 87.5,
+        "Z-MED-07-03": 78.6,
+        "Z-MED-08-01": 91.7,
+        "Z-MED-08-02": 81.5,
+        "Z-MED-08-03": 82.8,
+        "Z-MED-09-01": 72.7,
+        "Z-MED-09-02": 84.6,
+        "Z-MED-09-03": 86.4,
+        "Z-MED-10-01": 81.2,
+        "Z-MED-10-02": 78.9,
+        "Z-MED-10-03": 91.1,
+        "Z-MED-11-01": 83.3,
+        "Z-MED-11-02": 88.9,
+        "Z-MED-11-03": 87.9,
+        "Z-MED-12-01": 72.2,
+        "Z-MED-12-02": 85.7,
+        "Z-MED-12-03": 79.4,
+        "Z-MED-13-01": 73.7,
+        "Z-MED-13-02": 87.0,
+        "Z-MED-13-03": 74.2,
+        "Z-MED-14-01": 88.9,
+        "Z-MED-14-02": 76.8,
+        "Z-MED-14-03": 75.8,
+        "Z-MED-15-01": 84.6,
+        "Z-MED-15-02": 76.5,
+        "Z-MED-16-01": 86.1,
+        "Z-MED-16-02": 88.1,
+        "Z-MED-16-03": 90.9,
+        "Z-SAB-01": 58.6,
+        "Z-SAB-02": 85.7
+      }
+    },
+    "liberacion": {
+      "modelo": "percentiles_historicos",
+      "mae_modelo": 13.354,
+      "rmse_modelo": 28.335,
+      "r2_modelo": 0.3536,
+      "mae_formula": 13.351,
+      "rmse_formula": 28.361,
+      "r2_formula": 0.3524,
+      "mejora_pct_mae_vs_formula": -0.02,
+      "cobertura_empirica_p10_p90": 0.7725,
+      "n_test": 1965,
+      "distribucion_nivel_de_respaldo_usado": {
+        "tipo_movil+clasificacion_triaje+posible_traslado": 1960,
+        "tipo_movil": 4,
+        "tipo_movil+clasificacion_triaje": 1
+      },
+      "cobertura_por_zona_min_10_casos_pct": {
+        "Z-BEL-01": 80.3,
+        "Z-BEL-02": 59.0,
+        "Z-BEL-03": 67.6,
+        "Z-ENV-01": 70.2,
+        "Z-ENV-02": 85.7,
+        "Z-ENV-03": 77.1,
+        "Z-EST-01": 68.8,
+        "Z-GIR-01": 66.7,
+        "Z-ITA-01": 72.4,
+        "Z-ITA-02": 85.7,
+        "Z-MED-01-01": 84.4,
+        "Z-MED-01-02": 77.8,
+        "Z-MED-01-03": 68.9,
+        "Z-MED-02-01": 85.4,
+        "Z-MED-02-02": 74.4,
+        "Z-MED-02-03": 75.0,
+        "Z-MED-03-01": 73.2,
+        "Z-MED-03-02": 85.7,
+        "Z-MED-03-03": 71.9,
+        "Z-MED-04-01": 81.1,
+        "Z-MED-04-02": 81.8,
+        "Z-MED-04-03": 76.6,
+        "Z-MED-05-01": 68.8,
+        "Z-MED-05-02": 85.7,
+        "Z-MED-05-03": 82.1,
+        "Z-MED-06-01": 78.6,
+        "Z-MED-06-02": 77.1,
+        "Z-MED-06-03": 80.6,
+        "Z-MED-07-01": 52.2,
+        "Z-MED-07-02": 75.0,
+        "Z-MED-07-03": 82.1,
+        "Z-MED-08-01": 66.7,
+        "Z-MED-08-02": 77.8,
+        "Z-MED-08-03": 72.4,
+        "Z-MED-09-01": 84.8,
+        "Z-MED-09-02": 80.8,
+        "Z-MED-09-03": 86.4,
+        "Z-MED-10-01": 75.0,
+        "Z-MED-10-02": 71.1,
+        "Z-MED-10-03": 82.2,
+        "Z-MED-11-01": 83.3,
+        "Z-MED-11-02": 85.2,
+        "Z-MED-11-03": 78.8,
+        "Z-MED-12-01": 55.6,
+        "Z-MED-12-02": 71.4,
+        "Z-MED-12-03": 82.4,
+        "Z-MED-13-01": 78.9,
+        "Z-MED-13-02": 87.0,
+        "Z-MED-13-03": 80.6,
+        "Z-MED-14-01": 63.9,
+        "Z-MED-14-02": 80.4,
+        "Z-MED-14-03": 69.7,
+        "Z-MED-15-01": 69.2,
+        "Z-MED-15-02": 76.5,
+        "Z-MED-16-01": 77.8,
+        "Z-MED-16-02": 90.5,
+        "Z-MED-16-03": 87.9,
+        "Z-SAB-01": 86.2,
+        "Z-SAB-02": 85.7
+      }
+    },
+    "liberacion_alternativa_gb_descartada": {
+      "motivo_descarte": "No mejora la referencia (mediana por tipo_movil+clasificacion) una vez corregida la fuga de 'rol'.",
+      "mae_modelo": 13.364,
+      "rmse_modelo": 27.631,
+      "r2_modelo": 0.3853,
+      "mae_formula_referencia": 13.351,
+      "mejora_pct_mae_vs_formula": -0.1,
+      "cobertura_empirica_p10_p90_sin_calibrar": 0.6835,
+      "ajuste_calibracion_min": 1.021,
+      "cobertura_empirica_p10_p90_calibrada": 0.7802,
+      "n_test": 1965
+    }
+  },
+  "estado_real_resumen_principal": {
+    "n_solicitudes": 58,
+    "n_01_02": 19,
+    "coincide_puesto1_despachador_pct": 52.6,
+    "coincide_top3_despachador_pct": 77.2,
+    "cumple_objetivo_01_02_pct_motor_P50": 84.2,
+    "cumple_objetivo_01_02_pct_despachador_P50_mismo_modelo": 78.9,
+    "cumple_objetivo_01_02_pct_despachador_estimacion_mas_espera": 52.6,
+    "nota_base_de_tiempo": "Todos los tiempos se cuentan desde la hora de la solicitud (espera + viaje). La estimación del despachador es `tiempo_estimado_llegada_min` del archivo 06, no un tiempo medido.",
+    "tasa_aceptacion_gestor_pct": 55.7
+  },
+  "politicas_simuladas": {
+    "politica_motor": {
+      "n_solicitudes": 58,
+      "n_01_02": 19,
+      "cumple_objetivo_01_02_pct": 84.2,
+      "zonas_alta_descubiertas_promedio": 4.45,
+      "costo_estimado_promedio": 111546.0,
+      "tasa_aceptacion_gestor_pct": 100.0,
+      "coincidencia_con_despachador": "no comparable"
+    },
+    "mas_cercana": {
+      "n_solicitudes": 58,
+      "n_01_02": 19,
+      "cumple_objetivo_01_02_pct": 78.9,
+      "zonas_alta_descubiertas_promedio": 5.79,
+      "costo_estimado_promedio": 179500.0,
+      "tasa_aceptacion_gestor_pct": 100.0,
+      "coincidencia_con_despachador": "no comparable"
+    }
+  },
+  "comparacion_coordinador": {
+    "n_casos_marcados": 9,
+    "n_con_alternativa_identificable": 7,
+    "n_motor_incluye_alternativa": 7,
+    "n_motor_puesto1_es_alternativa": 4,
+    "n_sin_id_en_el_comentario": 2
+  },
+  "resumen_por_escenario": [
+    {
+      "id_escenario": "ESC-01",
+      "modo": "estado_real",
+      "n_solicitudes": 6,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 74140.0
+    },
+    {
+      "id_escenario": "ESC-01",
+      "modo": "mas_cercana",
+      "n_solicitudes": 6,
+      "pct_coincide_puesto1": 33.3,
+      "pct_coincide_top3": 33.3,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 141989.0
+    },
+    {
+      "id_escenario": "ESC-01",
+      "modo": "politica_motor",
+      "n_solicitudes": 6,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 83.3,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 72478.0
+    },
+    {
+      "id_escenario": "ESC-02",
+      "modo": "estado_real",
+      "n_solicitudes": 10,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 80.0,
+      "n_01_02": 3,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 33.3,
+      "zonas_alta_descubiertas_promedio": 6.3,
+      "costo_estimado_promedio": 102030.0
+    },
+    {
+      "id_escenario": "ESC-02",
+      "modo": "mas_cercana",
+      "n_solicitudes": 10,
+      "pct_coincide_puesto1": 40.0,
+      "pct_coincide_top3": 40.0,
+      "n_01_02": 3,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 33.3,
+      "zonas_alta_descubiertas_promedio": 7.2,
+      "costo_estimado_promedio": 171072.0
+    },
+    {
+      "id_escenario": "ESC-02",
+      "modo": "politica_motor",
+      "n_solicitudes": 10,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 70.0,
+      "n_01_02": 3,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 33.3,
+      "zonas_alta_descubiertas_promedio": 11.1,
+      "costo_estimado_promedio": 106729.0
+    },
+    {
+      "id_escenario": "ESC-03",
+      "modo": "estado_real",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 66.7,
+      "n_01_02": 3,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 66.7,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 66.7,
+      "zonas_alta_descubiertas_promedio": 6.33,
+      "costo_estimado_promedio": 252314.0
+    },
+    {
+      "id_escenario": "ESC-03",
+      "modo": "mas_cercana",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 66.7,
+      "n_01_02": 3,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 66.7,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 66.7,
+      "zonas_alta_descubiertas_promedio": 7.67,
+      "costo_estimado_promedio": 253918.0
+    },
+    {
+      "id_escenario": "ESC-03",
+      "modo": "politica_motor",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 66.7,
+      "n_01_02": 3,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 66.7,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 66.7,
+      "zonas_alta_descubiertas_promedio": 7.0,
+      "costo_estimado_promedio": 252314.0
+    },
+    {
+      "id_escenario": "ESC-04",
+      "modo": "estado_real",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 30.0,
+      "costo_estimado_promedio": 51012.0
+    },
+    {
+      "id_escenario": "ESC-04",
+      "modo": "mas_cercana",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 30.0,
+      "costo_estimado_promedio": 53179.0
+    },
+    {
+      "id_escenario": "ESC-04",
+      "modo": "politica_motor",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 30.0,
+      "costo_estimado_promedio": 51012.0
+    },
+    {
+      "id_escenario": "ESC-05",
+      "modo": "estado_real",
+      "n_solicitudes": 1,
+      "pct_coincide_puesto1": 100.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 0.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 0.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 0.0,
+      "zonas_alta_descubiertas_promedio": 4.0,
+      "costo_estimado_promedio": 83732.0
+    },
+    {
+      "id_escenario": "ESC-05",
+      "modo": "mas_cercana",
+      "n_solicitudes": 1,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 0.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 0.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 0.0,
+      "zonas_alta_descubiertas_promedio": 4.0,
+      "costo_estimado_promedio": 376371.0
+    },
+    {
+      "id_escenario": "ESC-05",
+      "modo": "politica_motor",
+      "n_solicitudes": 1,
+      "pct_coincide_puesto1": 100.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 0.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 0.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 0.0,
+      "zonas_alta_descubiertas_promedio": 4.0,
+      "costo_estimado_promedio": 83732.0
+    },
+    {
+      "id_escenario": "ESC-06",
+      "modo": "estado_real",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 61254.0
+    },
+    {
+      "id_escenario": "ESC-06",
+      "modo": "mas_cercana",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 1.0,
+      "costo_estimado_promedio": 148726.0
+    },
+    {
+      "id_escenario": "ESC-06",
+      "modo": "politica_motor",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 61149.0
+    },
+    {
+      "id_escenario": "ESC-07",
+      "modo": "estado_real",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 1.33,
+      "costo_estimado_promedio": 100743.0
+    },
+    {
+      "id_escenario": "ESC-07",
+      "modo": "mas_cercana",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 3.0,
+      "costo_estimado_promedio": 289611.0
+    },
+    {
+      "id_escenario": "ESC-07",
+      "modo": "politica_motor",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 1.33,
+      "costo_estimado_promedio": 155444.0
+    },
+    {
+      "id_escenario": "ESC-08",
+      "modo": "estado_real",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 3.5,
+      "costo_estimado_promedio": 219048.0
+    },
+    {
+      "id_escenario": "ESC-08",
+      "modo": "mas_cercana",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 5.0,
+      "costo_estimado_promedio": 267776.0
+    },
+    {
+      "id_escenario": "ESC-08",
+      "modo": "politica_motor",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 3.5,
+      "costo_estimado_promedio": 219048.0
+    },
+    {
+      "id_escenario": "ESC-09",
+      "modo": "estado_real",
+      "n_solicitudes": 16,
+      "pct_coincide_puesto1": 53.3,
+      "pct_coincide_top3": 86.7,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 63280.0
+    },
+    {
+      "id_escenario": "ESC-09",
+      "modo": "mas_cercana",
+      "n_solicitudes": 16,
+      "pct_coincide_puesto1": 20.0,
+      "pct_coincide_top3": 20.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 5.5,
+      "costo_estimado_promedio": 150835.0
+    },
+    {
+      "id_escenario": "ESC-09",
+      "modo": "politica_motor",
+      "n_solicitudes": 16,
+      "pct_coincide_puesto1": 46.7,
+      "pct_coincide_top3": 53.3,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 0.0,
+      "costo_estimado_promedio": 65390.0
+    },
+    {
+      "id_escenario": "ESC-10",
+      "modo": "estado_real",
+      "n_solicitudes": 4,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 0.5,
+      "costo_estimado_promedio": 173804.0
+    },
+    {
+      "id_escenario": "ESC-10",
+      "modo": "mas_cercana",
+      "n_solicitudes": 4,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 0.75,
+      "costo_estimado_promedio": 174866.0
+    },
+    {
+      "id_escenario": "ESC-10",
+      "modo": "politica_motor",
+      "n_solicitudes": 4,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 0.5,
+      "costo_estimado_promedio": 173804.0
+    },
+    {
+      "id_escenario": "ESC-11",
+      "modo": "estado_real",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 66.7,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 0.0,
+      "zonas_alta_descubiertas_promedio": 8.0,
+      "costo_estimado_promedio": 183226.0
+    },
+    {
+      "id_escenario": "ESC-11",
+      "modo": "mas_cercana",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 66.7,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 0.0,
+      "zonas_alta_descubiertas_promedio": 9.0,
+      "costo_estimado_promedio": 184070.0
+    },
+    {
+      "id_escenario": "ESC-11",
+      "modo": "politica_motor",
+      "n_solicitudes": 3,
+      "pct_coincide_puesto1": 66.7,
+      "pct_coincide_top3": 66.7,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 50.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 0.0,
+      "zonas_alta_descubiertas_promedio": 9.0,
+      "costo_estimado_promedio": 183226.0
+    },
+    {
+      "id_escenario": "ESC-12",
+      "modo": "estado_real",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 100.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 2.0,
+      "costo_estimado_promedio": 57335.0
+    },
+    {
+      "id_escenario": "ESC-12",
+      "modo": "mas_cercana",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 8.0,
+      "costo_estimado_promedio": 124848.0
+    },
+    {
+      "id_escenario": "ESC-12",
+      "modo": "politica_motor",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 100.0,
+      "n_01_02": 1,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 100.0,
+      "zonas_alta_descubiertas_promedio": 2.0,
+      "costo_estimado_promedio": 101327.0
+    },
+    {
+      "id_escenario": "ESC-13",
+      "modo": "estado_real",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 7.0,
+      "costo_estimado_promedio": 171909.0
+    },
+    {
+      "id_escenario": "ESC-13",
+      "modo": "mas_cercana",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 7.0,
+      "costo_estimado_promedio": 171909.0
+    },
+    {
+      "id_escenario": "ESC-13",
+      "modo": "politica_motor",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 2,
+      "pct_cumple_objetivo_motor_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_modelo_01_02": 100.0,
+      "pct_cumple_objetivo_despachador_estimado_01_02": 50.0,
+      "zonas_alta_descubiertas_promedio": 7.0,
+      "costo_estimado_promedio": 171909.0
+    },
+    {
+      "id_escenario": "ESC-14",
+      "modo": "estado_real",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 2.0,
+      "costo_estimado_promedio": 80244.0
+    },
+    {
+      "id_escenario": "ESC-14",
+      "modo": "mas_cercana",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 0.0,
+      "pct_coincide_top3": 0.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 4.0,
+      "costo_estimado_promedio": 321742.0
+    },
+    {
+      "id_escenario": "ESC-14",
+      "modo": "politica_motor",
+      "n_solicitudes": 2,
+      "pct_coincide_puesto1": 50.0,
+      "pct_coincide_top3": 50.0,
+      "n_01_02": 0,
+      "pct_cumple_objetivo_motor_01_02": NaN,
+      "pct_cumple_objetivo_despachador_modelo_01_02": NaN,
+      "pct_cumple_objetivo_despachador_estimado_01_02": NaN,
+      "zonas_alta_descubiertas_promedio": 2.0,
+      "costo_estimado_promedio": 80244.0
+    }
+  ]
+}

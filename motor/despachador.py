@@ -275,6 +275,18 @@ def evaluar_r04(
     que la ambulancia más cercana, la VMD va como primer respondiente y se
     preasigna esa ambulancia. Devuelve ``None`` si R04 no aplica.
 
+    «La ambulancia más cercana» incluye las que están ocupadas pero van a
+    liberarse pronto (``min_para_liberarse``), no solo las ``DISPONIBLE``/
+    ``RETORNANDO``: si se exigiera que hubiera una ambulancia ya libre para
+    poder comparar, R04 nunca podría activarse en el caso que la regla
+    describe -- **ninguna** ambulancia disponible en este momento (bug
+    encontrado en la revisión del equipo, 2026-11-24, con ESC-04: "Sin
+    ambulancia disponible", exactamente el escenario de R04, donde el
+    motor devolvía cero recomendaciones). Para una ambulancia ocupada, el
+    tiempo efectivo es ``min_para_liberarse + tiempo de viaje estimado
+    desde su posición actual`` -- una aproximación declarada, porque no se
+    sabe desde dónde saldrá exactamente cuando quede libre.
+
     Predice en lote (``predecir_llegada_lote``, una llamada para todas las
     ambulancias + VMD en vez de una por móvil) -- ver revisión de
     rendimiento, modelos/VERSION.md.
@@ -285,7 +297,7 @@ def evaluar_r04(
     objetivo = config["objetivos_min"][solicitud.codigo]
     ventaja_min = config["umbrales"]["r04_ventaja_vmd_min"]
 
-    ambulancias = [m for m in flota if m.tipo_movil in ("TAM", "TAB") and m.estado in ESTADOS_ASIGNABLES]
+    ambulancias = [m for m in flota if m.tipo_movil in ("TAM", "TAB") and m.activo and m.estado != "FUERA_SERVICIO"]
     vmds = [m for m in flota if m.tipo_movil == "VMD" and m.estado in ESTADOS_ASIGNABLES]
     if not ambulancias or not vmds:
         return None
@@ -294,8 +306,20 @@ def evaluar_r04(
         _candidato_dict(solicitud, m, hora, ROL_PRIMER_RESPONDIENTE) for m in vmds
     ]
     predicciones = predictor.predecir_llegada_lote(candidatos_dict)
-    llegadas_ambulancia = list(zip(ambulancias, predicciones[: len(ambulancias)]))
     llegadas_vmd = list(zip(vmds, predicciones[len(ambulancias) :]))
+
+    llegadas_ambulancia = []
+    for m, pred in zip(ambulancias, predicciones[: len(ambulancias)]):
+        espera = m.min_para_liberarse or 0.0
+        if espera:
+            pred = Prediccion(
+                minutos=pred.minutos + espera,
+                minutos_bajo=pred.minutos_bajo + espera,
+                minutos_alto=pred.minutos_alto + espera,
+                modelo=pred.modelo,
+                confiabilidad_zona_pct=pred.confiabilidad_zona_pct,
+            )
+        llegadas_ambulancia.append((m, pred))
 
     mejor_ambulancia, llegada_ambulancia = min(llegadas_ambulancia, key=lambda par: par[1].minutos)
     if llegada_ambulancia.minutos <= objetivo:
@@ -525,49 +549,35 @@ _BONUS_NIVEL_CLINICO = {
     "NO_RECOMENDADA": 1.00,
 }
 
-# El tiempo objetivo del documento 03 (R01-R02: 01 en 15 min, 02 en 20 min)
-# va ANTES que la cobertura (D03) o la retención de camilla (D08) en 01/02
+# El tiempo objetivo del documento 03 (01 en 15 min, 02 en 20 min) va ANTES
+# que la cobertura (D03) o la retención de camilla (D08) en 01/02
 # (corrección del equipo, 2026-11-24 -- caso ESC-03-S01: antes, D03/D08
 # podían sacar del top 3 a la única candidata que sí llegaba a tiempo).
-# NIVEL_OBJETIVO_BONUS es mucho mayor que el máximo posible de
-# puntaje_sin_costo (<=0.85, porque los pesos D01+D03..D08 suman 0.85 una
-# vez quitado D02 y cada componente está en [0,1]): así, cumplir el
-# objetivo SIEMPRE pesa más que cualquier diferencia de D03/D08/costo
-# dentro de un mismo nivel, sin tener que partir la lista en dos pasadas.
-NIVEL_OBJETIVO_BONUS = 1.0
+#
+# Revisión del 2026-11-24 (segunda vuelta): el nivel se decide con un orden
+# explícito por tupla (cumple_objetivo, puntaje_sin_costo, costo) -- no
+# sumando un número grande a puntaje_sin_costo. La versión anterior sumaba
+# un "NIVEL_OBJETIVO_BONUS" fijo asumiendo que puntaje_sin_costo nunca pasa
+# de 0.85; el equipo pidió que el nivel no dependa de ese supuesto numérico,
+# y que Recomendacion.puntaje se quede en escala 0-1 con un campo separado
+# (cumple_objetivo) para que la interfaz muestre los dos datos aparte.
 
 
-def _puntaje_sin_costo(
-    puntaje: float, componentes: dict[str, float], nivel: NivelCompatibilidad, llegada_minutos: float, objetivo_min: float
-) -> float:
-    """``(D01 + D03..D08, sin D02) × bonus de nivel de compatibilidad``, más
-    ``NIVEL_OBJETIVO_BONUS`` si la llegada (P50) cumple el tiempo objetivo
-    del código. Es el número que ``_ordenar_candidatas`` usa para ordenar
-    01/02, y el mismo que se muestra en ``Recomendacion.puntaje`` para esos
-    códigos (ver ``recomendar``)."""
-    base = (puntaje - componentes["d02_costo"]) * _BONUS_NIVEL_CLINICO[nivel]
-    if llegada_minutos <= objetivo_min:
-        base += NIVEL_OBJETIVO_BONUS
-    return base
+def _puntaje_sin_costo(puntaje: float, componentes: dict[str, float], nivel: NivelCompatibilidad) -> float:
+    """``(D01 + D03..D08, sin D02) × bonus de nivel de compatibilidad``
+    (ver ``_BONUS_NIVEL_CLINICO``). Queda en escala 0-1 (en la práctica,
+    ≤0.85). Es el número que ``_ordenar_candidatas`` usa para ordenar
+    dentro de cada nivel de ``cumple_objetivo`` en 01/02, y el que se
+    muestra en ``Recomendacion.puntaje`` para esos códigos."""
+    return (puntaje - componentes["d02_costo"]) * _BONUS_NIVEL_CLINICO[nivel]
 
 
-def _ordenar_candidatas(evaluadas: list[dict], codigo: str, umbral_desempate_clinico: float) -> list[dict]:
-    """Orden final de las candidatas evaluadas (ver nota de prioridad
-    clínica arriba). Marca ``desempate_por_costo=True`` en cada candidata
-    cuyo puesto se decidió por costo dentro de un grupo clínicamente
-    empatado, y rellena ``puntaje_mostrado`` con el número que de verdad
-    ordenó -- compartido por todo el grupo empatado, para que nunca se
-    muestre un puesto con menor puntaje por encima de otro (incluso después
-    de reordenar el grupo por costo)."""
-    for e in evaluadas:
-        e.setdefault("desempate_por_costo", False)
-
-    if codigo not in ("01", "02"):
-        for e in evaluadas:
-            e["puntaje_mostrado"] = e["puntaje"]
-        return sorted(evaluadas, key=lambda e: -e["puntaje"])
-
-    ordenadas = sorted(evaluadas, key=lambda e: -e["puntaje_sin_costo"])
+def _agrupar_y_desempatar_por_costo(ordenadas: list[dict], umbral_desempate_clinico: float) -> list[dict]:
+    """Recorre ``ordenadas`` (ya en orden descendente de ``puntaje_sin_costo``)
+    y, dentro de cada grupo de candidatas cuya diferencia de puntaje es
+    menor que ``umbral_desempate_clinico``, reordena por costo ascendente.
+    Rellena ``puntaje_mostrado`` (el valor más alto del grupo, compartido
+    por todas sus candidatas) y ``desempate_por_costo``."""
     resultado: list[dict] = []
     i = 0
     while i < len(ordenadas):
@@ -586,6 +596,35 @@ def _ordenar_candidatas(evaluadas: list[dict], codigo: str, umbral_desempate_cli
         resultado.extend(grupo)
         i = j
     return resultado
+
+
+def _ordenar_candidatas(evaluadas: list[dict], codigo: str, umbral_desempate_clinico: float) -> list[dict]:
+    """Orden final de las candidatas evaluadas (ver nota de prioridad
+    clínica arriba). Para 01/02, el orden es la tupla explícita
+    ``(cumple_objetivo, puntaje_sin_costo, -costo)``: primero todas las que
+    cumplen el tiempo objetivo (``e["cumple_objetivo"]``, calculado en
+    ``recomendar()`` antes de llamar aquí), sin importar su D03/D08;
+    dentro de cada grupo (cumple / no cumple), por ``puntaje_sin_costo``,
+    con el costo solo para desempatar diferencias menores que
+    ``umbral_desempate_clinico``. Para 03, 06 y 07 se mantiene el puntaje
+    combinado de siempre, sin cambios. Marca ``desempate_por_costo=True`` y
+    rellena ``puntaje_mostrado`` -- compartido por todo un grupo empatado,
+    para que nunca se muestre un puesto con menor puntaje que el
+    siguiente, incluso tras el desempate por costo."""
+    for e in evaluadas:
+        e.setdefault("desempate_por_costo", False)
+        e.setdefault("cumple_objetivo", False)
+
+    if codigo not in ("01", "02"):
+        for e in evaluadas:
+            e["puntaje_mostrado"] = e["puntaje"]
+        return sorted(evaluadas, key=lambda e: -e["puntaje"])
+
+    nivel_cumple = sorted((e for e in evaluadas if e["cumple_objetivo"]), key=lambda e: -e["puntaje_sin_costo"])
+    nivel_no_cumple = sorted((e for e in evaluadas if not e["cumple_objetivo"]), key=lambda e: -e["puntaje_sin_costo"])
+    return _agrupar_y_desempatar_por_costo(nivel_cumple, umbral_desempate_clinico) + _agrupar_y_desempatar_por_costo(
+        nivel_no_cumple, umbral_desempate_clinico
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -762,14 +801,17 @@ def recomendar(
             carga_relativa=e["carga_relativa"],
             pesos=pesos,
         )
+        # cumple_objetivo se calcula para cualquier código (es barato y
+        # siempre es información útil para la interfaz), pero solo decide
+        # el orden en 01/02 -- ver _ordenar_candidatas.
+        e["cumple_objetivo"] = e["llegada"].minutos <= objetivo
         # Prioridad clínica en 01/02 (revisión del equipo, 2026-11-24): puntaje
         # sin el componente de costo, con el bonus de nivel de compatibilidad
-        # y el bonus de tiempo objetivo (ver _puntaje_sin_costo) para que
-        # cumplir el objetivo del documento 03 pese más que D03/D08 o que
-        # "Preferida" vs "Permitida". Para 03/06/07 no se usa (se deja
-        # e["puntaje"] tal cual, como antes de esta revisión).
+        # (ver _BONUS_NIVEL_CLINICO); el tiempo objetivo decide el nivel por
+        # separado (cumple_objetivo, arriba), no sumándose a este puntaje.
+        # Para 03/06/07 no se usa (se deja e["puntaje"] tal cual).
         if es_clinico:
-            e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], componentes, e["nivel"], e["llegada"].minutos, objetivo)
+            e["puntaje_sin_costo"] = _puntaje_sin_costo(e["puntaje"], componentes, e["nivel"])
         if e["nivel"] == "NO_RECOMENDADA":
             # Penalización por etiqueta (no es uno de los D01-D08; ver
             # docstring de _puntaje): a puntaje igual, una candidata
@@ -811,6 +853,7 @@ def recomendar(
             ),
             ambulancia_preasignada=e["ambulancia_preasignada"],
             servicio_interrumpido_id=e["servicio_interrumpido_id"],
+            cumple_objetivo=e["cumple_objetivo"],
         )
         recomendaciones.append(recomendacion)
 
@@ -852,6 +895,77 @@ def _agregar_sugerencia_apoyo_medico(
     puesto1.explicacion += (
         f" D07: {vmd.id_movil} (VMD) puede ir de apoyo médico, llega en {llegada.minutos:.0f} min "
         f"({llegada.minutos_bajo:.0f}–{llegada.minutos_alto:.0f})."
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Brazo de comparación: política «más cercana» (sin puntaje)
+# --------------------------------------------------------------------------- #
+
+
+def elegir_mas_cercana(
+    solicitud: Solicitud,
+    flota: list[Movil],
+    hora: str,
+    config: dict,
+    predictor: PredictorTiempos,
+    tablas: TablasZonasTrafico,
+) -> Optional[Recomendacion]:
+    """Política de comparación (CLAUDE.md, fase 4, punto 3): el puesto 1 es
+    la móvil compatible y asignable con **menor llegada P50**, sin puntaje.
+
+    Respeta la matriz de compatibilidad, R03 y R05 (vía ``filtrar_aptas``);
+    si no hay ninguna móvil apta, aplica R04 (VMD como primer respondiente
+    con ambulancia preasignada), que es la regla obligatoria para ese caso.
+    No considera desvíos R06/desvío extendido: una política «más cercana»
+    no reasigna servicios en curso -- esa es una diferencia deliberada con
+    el motor, no un olvido. Devuelve una ``Recomendacion`` con
+    ``puntaje=0.0`` (no hay puntaje en esta política) o ``None`` si no hay
+    ninguna opción, ni siquiera R04.
+    """
+    candidatas = filtrar_aptas(solicitud, flota)
+    opcion_r04 = evaluar_r04(solicitud, flota, hora, predictor, config)
+    objetivo = config["objetivos_min"][solicitud.codigo]
+
+    if candidatas:
+        roles = {m.id_movil: ROL_ATENCION for m in candidatas}
+        lote = [_candidato_dict(solicitud, m, hora, roles[m.id_movil]) for m in candidatas]
+        predicciones = predictor.predecir_llegada_lote(lote)
+        movil, llegada = min(zip(candidatas, predicciones), key=lambda par: par[1].minutos)
+        rol = ROL_ATENCION
+        ambulancia_preasignada = None
+        reglas = ["R01"]
+    elif opcion_r04 is not None:
+        movil, llegada = opcion_r04.vmd, opcion_r04.llegada_vmd
+        rol = ROL_PRIMER_RESPONDIENTE
+        ambulancia_preasignada = opcion_r04.ambulancia_preasignada.id_movil
+        reglas = ["R01", "R04"]
+    else:
+        return None
+
+    liberacion = predictor.predecir_liberacion(solicitud, movil, rol_al_asignar=rol)
+    costo = _costo_estimado(movil, llegada, liberacion, tablas, solicitud)
+    cobertura = impacto_cobertura(flota, movil, hora, tablas, config, solicitud.id_zona)
+    return Recomendacion(
+        puesto=1,
+        id_movil=movil.id_movil,
+        rol_asignado=rol,
+        llegada=llegada,
+        liberacion=liberacion,
+        costo_estimado=costo,
+        ahorro_vs_alternativa=0.0,
+        margen_objetivo_min=round(objetivo - llegada.minutos, 1),
+        cobertura=cobertura,
+        puntaje=0.0,
+        reglas_aplicadas=reglas,
+        etiqueta="RECOMENDADA",
+        explicacion=(
+            f"Política «más cercana»: {movil.id_movil} es la móvil compatible y disponible con menor "
+            f"llegada estimada ({llegada.minutos:.0f} min); no usa puntaje."
+        ),
+        ambulancia_preasignada=ambulancia_preasignada,
+        servicio_interrumpido_id=None,
+        cumple_objetivo=llegada.minutos <= objetivo,
     )
 
 
@@ -924,6 +1038,7 @@ def aplicar_reclasificacion(
                     + " Ambulancia de traslado; la VMD permanece con el paciente.",
                     ambulancia_preasignada=None,
                     servicio_interrumpido_id=None,
+                    cumple_objetivo=llegada.minutos <= config["objetivos_min"][nuevo_codigo],
                 )
             )
         return reclasificada, recomendaciones
