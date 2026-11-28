@@ -6,6 +6,10 @@ resultados/*.csv
 .ipynb_checkpoints/
 .env
 
+# Fase 7: maqueta original del front (entregada por el equipo de interfaz,
+# no es parte del código entregado -- se organiza en web/, ver CLAUDE.md §7)
+entrada/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

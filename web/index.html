@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Despacho asistido · prototipo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+<header class="cabecera">
+  <div class="marca"><b>Despacho asistido</b><span>Prototipo del reto EstudIA</span></div>
+  <nav class="nav" aria-label="Pantallas">
+    <button data-vista="despacho" aria-current="page">Despacho</button>
+    <button data-vista="moviles">Móviles</button>
+    <button data-vista="tripulacion">Tripulación</button>
+    <button data-vista="tablero">Tablero</button>
+    <button data-vista="escenarios">Escenarios</button>
+  </nav>
+  <div class="derecha">
+    <span class="ficticio">Datos ficticios</span>
+    <button class="btn-claro" id="btn-acerca">Sobre este prototipo</button>
+  </div>
+</header>
+
+<section class="barra" aria-label="Reproductor de escenarios">
+  <label>Escenario <select id="sel-esc"></select></label>
+  <div class="reloj" aria-live="off"><span class="hora" id="reloj-hora">--:--</span><span class="dia" id="reloj-dia"></span><span class="min" id="reloj-min"></span></div>
+  <span class="trafico" id="reloj-trafico"></span>
+  <div class="controles">
+    <button class="btn primario" id="btn-play">Reproducir</button>
+    <button class="btn" id="btn-1">+1 min</button>
+    <button class="btn" id="btn-5">+5 min</button>
+    <button class="btn" id="btn-reset">Reiniciar</button>
+    <label class="chk"><input type="checkbox" id="chk-pausa" checked> Pausar con 01 o 02</label>
+  </div>
+  <button class="btn plum registrar" id="btn-registrar">Registrar solicitud</button>
+</section>
+<div class="banner-urg" id="banner-urg" role="alert" hidden></div>
+
+<main>
+  <section class="vista despacho" id="v-despacho" aria-label="Despacho">
+    <div class="panel col-cola">
+      <header><h2>Cola</h2><span class="nota" id="cola-n"></span></header>
+      <ul class="cola" id="cola"></ul>
+      <div id="en-curso"></div>
+    </div>
+    <div class="panel col-panel" id="panel-sol"></div>
+    <div class="panel col-mapa">
+      <header><h2>Mapa</h2>
+        <div class="mapa-herr" role="group" aria-label="Encuadre del mapa">
+          <button data-zoom="urbana" aria-pressed="true">Urbana</button>
+          <button data-zoom="valle" aria-pressed="false">Valle</button>
+          <button data-zoom="sol" aria-pressed="false">Solicitud</button>
+          <button data-ampliar aria-pressed="false" class="ampliar" title="Ampliar el mapa y reducir el panel">Ampliar</button>
+        </div>
+      </header>
+      <div class="mapa-wrap" id="mapa-wrap"></div>
+    </div>
+  </section>
+
+  <section class="vista" id="v-moviles" hidden aria-label="Control de móviles"></section>
+  <section class="vista" id="v-tripulacion" hidden aria-label="Panel de la tripulación"></section>
+  <section class="vista" id="v-tablero" hidden aria-label="Tablero"></section>
+  <section class="vista" id="v-escenarios" hidden aria-label="Escenarios"></section>
+</main>
+
+<div class="avisos" id="avisos" aria-live="polite"></div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<dialog id="dlg-urgencia" class="dlg-urgencia" aria-label="Urgencia sin asignar"></dialog>
+<dialog id="dlg-confirmar" class="dlg-confirmar" aria-label="Confirmar asignación"></dialog>
+<dialog id="dlg-registro" aria-label="Registrar solicitud"></dialog>
+
+<dialog id="dlg-acerca">
+  <div class="dlg">
+    <h2>Sobre este prototipo</h2>
+    <p>Es la maqueta interactiva del MVP: cola, panel de la solicitud, mapa en vivo, ventana de urgencias, control de móviles, panel de la tripulación, tablero y reproductor de escenarios. Corre solo en este navegador, sin conexión con ningún sistema, y usa únicamente los datos ficticios del reto.</p>
+    <h3>Qué es provisional</h3>
+    <ul>
+      <li>Los tiempos de llegada salen de la fórmula del Readme (matriz de tiempos × factor de tráfico). El rango que se muestra es provisional: lo reemplaza el intervalo del modelo de P1.</li>
+      <li>El motor aplica R01–R07 como filtro y un puntaje con D01–D08. Los pesos están en el objeto <code>CONFIG</code>, que es el espejo de <code>config.toml</code>.</li>
+      <li>El simulador es simple: la atención dura la mediana histórica por clase y tipo de móvil; un traslado va al centro más cercano y suma 53 min de retención de camilla (mediana del histórico).</li>
+      <li>Las cifras del tablero salen de esta simulación. Las del pitch deben salir de la carpeta <code>resultados/</code>.</li>
+    </ul>
+    <h3>Cómo se conecta con el repositorio</h3>
+    <ul>
+      <li>Las funciones del motor usan los nombres del contrato: <code>predecirLlegada</code>, <code>predecirLiberacion</code>, <code>recomendar</code>, <code>impactoCobertura</code>, <code>cargarEscenario</code>, <code>avanzar</code> y <code>correr</code>.</li>
+      <li>Cada pestaña equivale a una página de Streamlit (<code>st.Page</code>): Despacho reúne cola, panel y mapa; luego Móviles, Tablero y Escenarios. La pestaña Tripulación simula la vista móvil de cada unidad; en producción sería otra página, pensada para celular.</li>
+      <li>Las acciones de la tripulación llaman a <code>tripulacion()</code>; la corrección, a <code>corregirAsignacion()</code>; los datos incompletos, a <code>completarZona()</code> y <code>devolverATriaje()</code>.</li>
+    </ul>
+    <h3>Atajos</h3>
+    <ul>
+      <li>Barra espaciadora: reproducir o pausar el reloj (en Despacho).</li>
+      <li>Esc en la ventana de urgencias: la minimiza a una franja roja; no la descarta.</li>
+      <li>Rueda del mouse sobre el mapa: acercar o alejar; arrastrar: mover.</li>
+    </ul>
+    <h3>Confidencialidad</h3>
+    <p>Este archivo lleva dentro los datos del reto. Úsenlo en un computador del equipo: no lo suban a Git, a internet ni a servicios externos, y no agreguen las marcas de la empresa sin su revisión.</p>
+    <div style="text-align:right;margin-top:16px"><button class="btn primario" id="btn-cerrar-acerca">Cerrar</button></div>
+  </div>
+</dialog>
+
+<script src="motor.js"></script>
+<script src="interfaz.js"></script>
+</body>
+</html>
